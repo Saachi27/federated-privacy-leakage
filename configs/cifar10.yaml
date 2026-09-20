@@ -1,0 +1,14 @@
+# Phase M2 baseline — FedAvg on CIFAR-10 (IID). Harder than MNIST; expect
+# lower accuracy and more rounds needed.
+dataset: cifar10
+num_clients: 10
+client_fraction: 1.0
+rounds: 40
+local_epochs: 1
+batch_size: 64
+lr: 0.01
+momentum: 0.9
+seed: 42
+device: auto
+model:
+  name: smallcnn

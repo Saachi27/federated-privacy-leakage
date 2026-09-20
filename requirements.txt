@@ -1,0 +1,8 @@
+torch>=2.0
+torchvision>=0.15
+numpy>=1.21
+pyyaml>=6.0
+matplotlib>=3.5
+tqdm>=4.60
+opacus>=1.4          # M4: differential privacy (DP-SGD)
+importlib_metadata   # required by opacus on Python 3.9
