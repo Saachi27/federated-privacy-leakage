@@ -7,6 +7,7 @@ import re
 import sys
 
 import numpy as np
+from matplotlib.ticker import MaxNLocator
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -65,6 +66,7 @@ def plot_curves(all_runs, series, title, path):
         ax.fill_between(rounds, acc.mean(0) - acc.std(0), acc.mean(0) + acc.std(0),
                         color=SERIES[i], alpha=0.12, linewidth=0)
         ax.plot(rounds, acc.mean(0), marker=MARKERS[i], markevery=3, color=SERIES[i], label=label)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_xlabel("communication round")
     ax.set_ylabel("test accuracy")
     ax.set_title(title, loc="left")
@@ -146,13 +148,13 @@ def plot_attacks(attacks, path):
                           for rec in r["records"]] for rnd in rounds]
             mean = np.array([np.mean(v) for v in per_round])
             std = np.array([np.std(v) for v in per_round])
-            ax.fill_between(x, mean - std, mean + std, color=SERIES[i], alpha=0.12, linewidth=0)
+            ax.fill_between(x, mean - std, np.minimum(mean + std, 1), color=SERIES[i], alpha=0.12, linewidth=0)
             ax.plot(x, mean, marker=MARKERS[i], color=SERIES[i], label=attacker)
         ax.set_xticks(x, rounds)
         ax.set_xlabel("federated round the model was attacked at")
         ax.set_title(names.get(model, model), loc="left")
     axes[0][0].set_ylabel("reconstruction SSIM")
-    axes[0][-1].legend(title="attacker", loc="best")
+    axes[0][-1].legend(title="attacker", loc="center right")
     fig.tight_layout()
     fig.savefig(path)
     plt.close(fig)

@@ -75,14 +75,15 @@ def save_bar_chart(aggregates, attackers, path):
         means = [aggregates[(attacker, d)]["ssim"]["mean"] for d in DEFENSES]
         stds = [aggregates[(attacker, d)]["ssim"]["std"] for d in DEFENSES]
         ax.bar(x + (i - (len(attackers) - 1) / 2) * width, means, width * 0.92,
-               yerr=stds, capsize=3, color=SERIES[i], label=attacker,
+               yerr=[stds, np.minimum(stds, 1 - np.array(means))],  # SSIM tops out at 1
+               capsize=3, color=SERIES[i], label=attacker,
                error_kw={"elinewidth": 1, "ecolor": "#52514e"})
     ax.set_xticks(x, ["no defense", "DP noise", "pairwise mask"])
     ax.tick_params(axis="x", length=0)
     ax.set_ylabel("reconstruction SSIM (lower = more private)")
     ax.axhline(0, color="#52514e", linewidth=0.8)
     ax.legend(title="attacker", ncol=len(attackers), loc="upper right")
-    ax.set_title("Attack success by defense (mean ± std)", loc="left")
+    ax.set_title("Reconstruction quality by defense (mean ± std)", loc="left")
     fig.savefig(path)
     return path
 
@@ -98,7 +99,7 @@ def save_sweep_chart(sweep, attackers, path):
     for i, attacker in enumerate(attackers):
         means = np.array([s["agg"][attacker]["ssim"]["mean"] for s in sweep])
         stds = np.array([s["agg"][attacker]["ssim"]["std"] for s in sweep])
-        ax.fill_between(x, means - stds, means + stds, color=SERIES[i], alpha=0.12, linewidth=0)
+        ax.fill_between(x, means - stds, np.minimum(means + stds, 1), color=SERIES[i], alpha=0.12, linewidth=0)
         ax.plot(x, means, marker=MARKERS[i], color=SERIES[i], label=attacker)
     ax.set_xticks(x, [s["label"] for s in sweep])
     ax.set_xlabel("defense strength (noise multiplier σ, clip norm fixed at 1)")

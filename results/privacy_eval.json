@@ -1,0 +1,60 @@
+{
+  "args": {
+    "dataset": "mnist",
+    "index": 1,
+    "mode": "idlg",
+    "iters": 300,
+    "seed": 42,
+    "num_clients": 5,
+    "mask_scale": 1.0,
+    "dp_clip": 1.0,
+    "dp_noise": 1.0,
+    "attacker": "adaptive",
+    "defenses": [
+      "none",
+      "dp",
+      "mask"
+    ],
+    "out": "results/privacy_eval",
+    "verbose": false
+  },
+  "true_label": 2,
+  "results": {
+    "none": {
+      "defense": "none",
+      "attacker": "adaptive",
+      "diverged": false,
+      "mse": 4.0366927578361356e-08,
+      "psnr": 73.93974304199219,
+      "ssim": 0.9999517202377319,
+      "final_grad_loss": 5.775956424258766e-08,
+      "recovered_label": 2,
+      "true_label": 2,
+      "label_correct": 1
+    },
+    "dp": {
+      "defense": "dp",
+      "attacker": "adaptive",
+      "diverged": false,
+      "mse": 0.481460839509964,
+      "psnr": 3.174390196800232,
+      "ssim": 0.029733985662460327,
+      "final_grad_loss": 16747.2421875,
+      "recovered_label": 2,
+      "true_label": 2,
+      "label_correct": 1
+    },
+    "mask": {
+      "defense": "mask",
+      "attacker": "adaptive",
+      "diverged": false,
+      "mse": 0.4995330572128296,
+      "psnr": 3.0143573880195618,
+      "ssim": 0.010921302251517773,
+      "final_grad_loss": 66544.75,
+      "recovered_label": 2,
+      "true_label": 2,
+      "label_correct": 1
+    }
+  }
+}
