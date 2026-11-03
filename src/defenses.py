@@ -5,7 +5,7 @@ import torch
 
 # 1.
 def _pair_seed(base_seed, i, j):
-    # Deterministic shared seed for the unordered pair {i, j}.
+    # Stand-in for the seed a real pair {i, j} would agree via key exchange.
     return (base_seed * 1_000_003 + min(i, j) * 1009 + max(i, j)) % (2 ** 31)
 
 

@@ -8,12 +8,12 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data import get_sample
-from src.evaluation import DEFENSES, attack_image, default_params
+from src.evaluation import ATTACKERS, DEFENSES, attack_image, default_params
 
 
 def run_one(defense, image, label, meta, args):
     params = default_params(
-        mode=args.mode, iters=args.iters,
+        attacker=args.attacker, mode=args.mode, iters=args.iters,
         model_seed=args.seed, def_seed=args.seed,
         dp_clip=args.dp_clip, dp_noise=args.dp_noise,
         num_clients=args.num_clients, mask_scale=args.mask_scale)
@@ -60,7 +60,8 @@ def main():
     p.add_argument("--num-clients", type=int, default=5, help="for masking")
     p.add_argument("--mask-scale", type=float, default=1.0)
     p.add_argument("--dp-clip", type=float, default=1.0)
-    p.add_argument("--dp-noise", type=float, default=0.1)
+    p.add_argument("--dp-noise", type=float, default=1.0)
+    p.add_argument("--attacker", choices=ATTACKERS, default="adaptive")
     p.add_argument("--defenses", nargs="+", default=DEFENSES, choices=DEFENSES)
     p.add_argument("--out", default="results/privacy_eval")
     p.add_argument("--verbose", action="store_true")
@@ -68,7 +69,7 @@ def main():
 
     image, label, meta = get_sample(args.dataset, args.index)
     print(f"Target: {args.dataset} index={args.index} true label={label} "
-          f"| attack={args.mode} iters={args.iters}\n")
+          f"| attacker={args.attacker} iters={args.iters}\n")
 
     recons, results = {}, {}
     for defense in args.defenses:

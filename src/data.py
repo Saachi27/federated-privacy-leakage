@@ -49,6 +49,23 @@ def partition_iid(num_samples, num_clients, seed=0):
     return [list(shard) for shard in np.array_split(perm, num_clients)]
 
 
+def partition_dirichlet(labels, num_clients, alpha, seed=0, min_size=10):
+    """Label-skewed non-IID split: each class is shared out by Dirichlet(alpha)."""
+    labels = np.asarray(labels)
+    rng = np.random.default_rng(seed)
+    for _ in range(100):
+        shards = [[] for _ in range(num_clients)]
+        for cls in np.unique(labels):
+            idx = rng.permutation(np.where(labels == cls)[0])
+            props = rng.dirichlet([alpha] * num_clients)
+            cuts = (np.cumsum(props)[:-1] * len(idx)).astype(int)
+            for shard, part in zip(shards, np.split(idx, cuts)):
+                shard.extend(part.tolist())
+        if min(len(s) for s in shards) >= min_size:
+            return shards
+    raise ValueError(f"No split with min_size={min_size} found at alpha={alpha}")
+
+
 def make_client_loaders(train_dataset, client_indices, batch_size):
     """One DataLoader per client over its index shard."""
     loaders = []

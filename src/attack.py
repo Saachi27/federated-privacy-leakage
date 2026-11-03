@@ -13,6 +13,12 @@ def compute_gradient(model, x, y, criterion=None):
     return [g.detach().clone() for g in grads]
 
 
+def clip_by_global_norm(grads, clip):
+    """Scale gradients down to global norm `clip` (differentiable)."""
+    norm = torch.sqrt(sum((g ** 2).sum() for g in grads))
+    return [g * torch.clamp(clip / (norm + 1e-10), max=1.0) for g in grads]
+
+
 def extract_label(observed_grads):
     """IDLG label recovery."""
     return int(torch.argmin(observed_grads[-1]).item())
@@ -20,7 +26,7 @@ def extract_label(observed_grads):
 
 def reconstruct(model, observed_grads, input_shape, num_classes,
                 mode="idlg", label=None, iters=300, lr=1.0, seed=0,
-                device=None, log_every=0, log=print):
+                device=None, log_every=0, log=print, clip=None):
     """Reconstruct the input from an observed gradient."""
     device = device or next(model.parameters()).device
     gen = torch.Generator(device="cpu").manual_seed(seed)
@@ -49,6 +55,8 @@ def reconstruct(model, observed_grads, input_shape, num_classes,
             soft = F.softmax(dummy_label, dim=-1)
             dummy_loss = torch.mean(torch.sum(-soft * F.log_softmax(pred, dim=-1), dim=-1))
         dummy_grads = torch.autograd.grad(dummy_loss, model.parameters(), create_graph=True)
+        if clip is not None:
+            dummy_grads = clip_by_global_norm(dummy_grads, clip)
         grad_diff = sum(((dg - og) ** 2).sum() for dg, og in zip(dummy_grads, observed_grads))
         grad_diff.backward()
         return grad_diff
@@ -61,4 +69,37 @@ def reconstruct(model, observed_grads, input_shape, num_classes,
 
     if mode == "dlg":
         label = int(torch.argmax(dummy_label).item())
+    return dummy_x.detach(), {"label": label, "final_loss": history[-1], "history": history}
+
+
+def reconstruct_cosine(model, observed_grads, input_shape, label,
+                       iters=3000, lr=0.1, tv_weight=1e-4, seed=0, device=None):
+    """Geiping et al."""
+    device = device or next(model.parameters()).device
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    dummy_x = torch.rand(input_shape, generator=gen).to(device).requires_grad_(True)
+    label_t = torch.tensor([label], device=device)
+    observed_norm = torch.sqrt(sum((g ** 2).sum() for g in observed_grads))
+
+    optimizer = torch.optim.Adam([dummy_x], lr=lr)
+    milestones = [iters * 3 // 8, iters * 5 // 8, iters * 7 // 8]
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones, gamma=0.1)
+
+    history = []
+    for _ in range(iters):
+        optimizer.zero_grad()
+        dummy_loss = F.cross_entropy(model(dummy_x), label_t)
+        dummy_grads = torch.autograd.grad(dummy_loss, model.parameters(), create_graph=True)
+        dot = sum((dg * og).sum() for dg, og in zip(dummy_grads, observed_grads))
+        dummy_norm = torch.sqrt(sum((dg ** 2).sum() for dg in dummy_grads))
+        tv = (dummy_x[..., 1:, :] - dummy_x[..., :-1, :]).abs().mean() + \
+             (dummy_x[..., :, 1:] - dummy_x[..., :, :-1]).abs().mean()
+        loss = 1 - dot / (dummy_norm * observed_norm + 1e-10) + tv_weight * tv
+        loss.backward()
+        dummy_x.grad.sign_()
+        optimizer.step()
+        scheduler.step()
+        with torch.no_grad():
+            dummy_x.clamp_(0, 1)
+        history.append(float(loss))
     return dummy_x.detach(), {"label": label, "final_loss": history[-1], "history": history}

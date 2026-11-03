@@ -17,7 +17,11 @@ DEFAULTS = {
     "device": "auto",
     "eval_batch_size": 256,
     "limit_train": None,  # cap training samples (None = all); for quick runs
+    "normalize": True,  # False keeps pixels in [0, 1] (attack experiments)
+    "partition": "iid",  # "iid" or "dirichlet" (label-skewed non-IID)
+    "dirichlet_alpha": 0.5,  # smaller = more label skew
     "dp": None,  # set to {max_grad_norm, noise_multiplier} for
+    "masking": None,  # set to {scale} to aggregate via pairwise masking
     "model": {"name": "smallcnn"},
 }
 

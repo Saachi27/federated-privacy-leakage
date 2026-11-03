@@ -4,10 +4,11 @@ import random
 
 from .client import Client
 from .data import (
-    load_datasets, make_client_loaders, make_test_loader, partition_iid,
+    load_datasets, make_client_loaders, make_test_loader, partition_dirichlet,
+    partition_iid,
 )
-from .models import build_model
-from .server import average_states, select_clients
+from .models import build_model, dlg_init
+from .server import average_states, secure_average_states, select_clients
 from .utils import evaluate, get_device, set_seed
 
 
@@ -21,7 +22,7 @@ def resolve_model_cfg(cfg, meta):
     return model_cfg
 
 
-def run_federated(cfg, log=print):
+def run_federated(cfg, log=print, on_round=None):
     """Run FedAvg per the config dict."""
     set_seed(cfg["seed"])
     device = get_device(cfg.get("device", "auto"))
@@ -29,19 +30,28 @@ def run_federated(cfg, log=print):
         f"clients={cfg['num_clients']} fraction={cfg['client_fraction']}")
 
     train_ds, test_ds, meta = load_datasets(
-        cfg["dataset"], cfg.get("data_root", "./data"), cfg.get("download", True))
+        cfg["dataset"], cfg.get("data_root", "./data"), cfg.get("download", True),
+        cfg.get("normalize", True))
 
     # Optional caps to keep smoke runs fast.
     n_train = len(train_ds)
     if cfg.get("limit_train"):
         n_train = min(n_train, cfg["limit_train"])
-    client_indices = partition_iid(n_train, cfg["num_clients"], cfg["seed"])
+    if cfg.get("partition", "iid") == "dirichlet":
+        client_indices = partition_dirichlet(
+            train_ds.targets[:n_train], cfg["num_clients"],
+            cfg.get("dirichlet_alpha", 0.5), cfg["seed"])
+    else:
+        client_indices = partition_iid(n_train, cfg["num_clients"], cfg["seed"])
     client_loaders = make_client_loaders(train_ds, client_indices, cfg["batch_size"])
 
     test_loader = make_test_loader(test_ds, cfg.get("eval_batch_size", 256))
 
     model_cfg = resolve_model_cfg(cfg, meta)
-    global_model = build_model(model_cfg).to(device)
+    global_model = build_model(model_cfg)
+    if model_cfg.get("dlg_init"):
+        dlg_init(global_model)
+    global_model = global_model.to(device)
     global_state = {k: v.detach().cpu() for k, v in global_model.state_dict().items()}
     clients = [Client(i, ld, device) for i, ld in enumerate(client_loaders)]
 
@@ -49,6 +59,13 @@ def run_federated(cfg, log=print):
     if dp:
         log(f"[setup] differential privacy ON "
             f"(noise={dp['noise_multiplier']}, clip={dp['max_grad_norm']})")
+
+    masking = cfg.get("masking")
+    if masking:
+        log(f"[setup] pairwise masking ON (scale={masking['scale']})")
+
+    if on_round:
+        on_round(0, global_model, client_indices, train_ds)
 
     rng = random.Random(cfg["seed"])
     history = []
@@ -63,7 +80,13 @@ def run_federated(cfg, log=print):
             counts.append(n)
             losses.append(loss)
 
-        global_state = average_states(states, counts)
+        if masking:
+            # Fresh seeds every round: reusing a mask would let the server cancel it by differencing a
+            global_state, _ = secure_average_states(
+                states, counts, base_seed=cfg["seed"] * 100_003 + rnd,
+                scale=masking["scale"])
+        else:
+            global_state = average_states(states, counts)
         global_model.load_state_dict(global_state)
 
         acc, test_loss = evaluate(global_model, test_loader, device)
@@ -75,6 +98,8 @@ def run_federated(cfg, log=print):
         log(f"[round {rnd:3d}/{cfg['rounds']}] "
             f"train_loss={train_loss:.4f} test_loss={test_loss:.4f} "
             f"test_acc={acc:.4f}")
+        if on_round:
+            on_round(rnd, global_model, client_indices, train_ds)
 
     privacy = None
     if dp:

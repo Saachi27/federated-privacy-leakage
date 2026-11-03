@@ -3,8 +3,9 @@ __pycache__/
 .venv/
 venv/
 data/
-results/*.json
-results/*.png
+results/archive_*/
+results/runs/*.log
+results/*.log
 *.pt
 *.pth
 .DS_Store

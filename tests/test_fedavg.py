@@ -11,7 +11,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.client import Client
 from src.engine import run_federated
 from src.models import SmallCNN
-from src.server import average_states, select_clients
+from src.data import partition_dirichlet
+from src.server import average_states, secure_average_states, select_clients
 
 
 def test_average_states_is_weighted_mean():
@@ -66,7 +67,7 @@ def test_end_to_end_synthetic_runs():
     # Monkeypatch the dataset loader to avoid any download.
     import src.engine as engine
 
-    def fake_load(name, data_root, download):
+    def fake_load(name, data_root, download, normalize=True):
         x = torch.randn(60, 1, 28, 28)
         y = torch.randint(0, 10, (60,))
         ds = TensorDataset(x, y)
@@ -83,6 +84,64 @@ def test_end_to_end_synthetic_runs():
     assert privacy is None  # no DP in this config
     assert len(history) == 2
     assert all(0.0 <= h["test_acc"] <= 1.0 for h in history)
+
+
+def test_secure_aggregation_matches_fedavg():
+    """Masked aggregation must give FedAvg's result, not any client's weights."""
+    torch.manual_seed(0)
+    states = [{"w": torch.randn(50), "b": torch.randn(4, 4)} for _ in range(5)]
+    counts = [10, 20, 30, 40, 50]
+    plain = average_states(states, counts)
+    secure, uploads = secure_average_states(states, counts, base_seed=3)
+    for key in plain:
+        assert torch.allclose(plain[key], secure[key], atol=1e-6), key
+    # What the server sees of client 0 is dominated by the mask.
+    weighted = states[0]["w"].double() * (counts[0] / sum(counts))
+    assert (uploads[0][0] - weighted).abs().mean() > 5 * weighted.abs().mean()
+
+
+def test_masked_training_matches_baseline():
+    """End to end: training with masking stays on the baseline's trajectory."""
+    x = torch.randn(60, 1, 28, 28)
+    y = torch.randint(0, 10, (60,))
+    ds = TensorDataset(x, y)
+    meta = {"in_channels": 1, "num_classes": 10, "input_size": 28}
+    import src.engine as engine
+    orig = engine.load_datasets
+    engine.load_datasets = lambda *a, **k: (ds, ds, meta)
+    cfg = {
+        "dataset": "mnist", "num_clients": 3, "client_fraction": 1.0, "rounds": 3,
+        "local_epochs": 1, "batch_size": 10, "lr": 0.05, "momentum": 0.0, "seed": 0,
+        "device": "cpu", "model": {"name": "smallcnn"},
+    }
+    try:
+        _, base, _ = run_federated(cfg, log=lambda *a, **k: None)
+        _, masked, _ = run_federated({**cfg, "masking": {"scale": 1.0}},
+                                     log=lambda *a, **k: None)
+    finally:
+        engine.load_datasets = orig
+    for key, value in base.state_dict().items():
+        assert torch.allclose(value, masked.state_dict()[key], atol=1e-4), key
+
+
+def test_masks_change_every_round():
+    """Reused masks could be cancelled by differencing uploads across rounds."""
+    states = [{"w": torch.zeros(20)} for _ in range(3)]
+    _, first = secure_average_states(states, [1, 1, 1], base_seed=100)
+    _, second = secure_average_states(states, [1, 1, 1], base_seed=101)
+    assert not torch.allclose(first[0][0], second[0][0])
+
+
+def test_dirichlet_partition_is_a_skewed_split():
+    labels = torch.arange(10).repeat(100).numpy()
+    shards = partition_dirichlet(labels, num_clients=5, alpha=0.1, seed=0)
+    flat = sorted(i for s in shards for i in s)
+    assert flat == list(range(1000)), "every sample lands on exactly one client"
+    assert all(len(s) >= 10 for s in shards)
+    def top_class_share(shard):
+        counts = torch.bincount(torch.tensor(labels[shard]), minlength=10)
+        return (counts.max().float() / counts.sum()).item()
+    assert max(top_class_share(s) for s in shards) > 0.3, "alpha=0.1 must skew labels"
 
 
 def _run_all():

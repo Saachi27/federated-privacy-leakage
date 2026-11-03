@@ -85,6 +85,32 @@ def test_dlg_reconstructs_without_defense():
     assert m["ssim"] > 0.95, f"reconstruction failed: SSIM={m['ssim']}"
 
 
+def test_adaptive_attacker_defeats_clipping_alone():
+    """Clipping without noise is no defense once the attacker models the clip."""
+    model = _toy_model()
+    torch.manual_seed(1)
+    img = torch.rand(1, 28, 28)
+    x, y = img.unsqueeze(0), torch.tensor([5])
+    grads = attack.compute_gradient(model, x, y)
+    clip = defenses.global_norm(grads).item() / 5
+    clipped = defenses.privatize_gradient(grads, max_grad_norm=clip, noise_multiplier=0.0)
+    naive, _ = attack.reconstruct(model, clipped, x.shape, 10, iters=200, seed=0, label=5)
+    aware, _ = attack.reconstruct(model, clipped, x.shape, 10, iters=200, seed=0, label=5,
+                                  clip=clip)
+    assert metrics.all_metrics(aware[0], img)["ssim"] > 0.9
+    assert metrics.all_metrics(aware[0], img)["ssim"] > metrics.all_metrics(naive[0], img)["ssim"]
+
+
+def test_cosine_attack_reconstructs():
+    model = _toy_model()
+    torch.manual_seed(1)
+    img = torch.rand(1, 28, 28)
+    x, y = img.unsqueeze(0), torch.tensor([5])
+    grads = attack.compute_gradient(model, x, y)
+    recon, _ = attack.reconstruct_cosine(model, grads, x.shape, 5, iters=1500, seed=0)
+    assert metrics.all_metrics(recon[0], img)["ssim"] > 0.8
+
+
 def test_defense_degrades_reconstruction():
     """The core M4 claim: defenses make the reconstruction much worse."""
     model = _toy_model()

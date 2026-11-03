@@ -52,7 +52,8 @@ class Client:
             # Accumulate this round's steps for (epsilon, delta) accounting.
             self.dp_steps += n_batches
             self.dp_noise = dp["noise_multiplier"]
-            self.dp_sample_rate = self.dataloader.batch_size / self.num_samples
+            # Opacus' Poisson sampler uses exactly this rate (see make_private).
+            self.dp_sample_rate = 1 / len(self.dataloader)
 
         # Opacus wraps the model in a GradSampleModule; unwrap for clean keys.
         trained = getattr(local_model, "_module", local_model)
