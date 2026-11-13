@@ -34,6 +34,7 @@ def score(fakes, targets):
 
 def main():
     p = argparse.ArgumentParser()
+    p.add_argument("--dataset", choices=["mnist", "cifar10"], default="mnist")
     p.add_argument("--first-image", type=int, default=50)
     p.add_argument("--num-images", type=int, default=32)
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
@@ -44,15 +45,17 @@ def main():
     first, num = args.first_image, args.num_images
     assert first + num <= POOL_START
 
-    train_ds, test_ds, _ = load_datasets("mnist", normalize=False)
+    train_ds, test_ds, _ = load_datasets(args.dataset, normalize=False)
     targets = [test_ds[i][0] for i in range(first, first + num)]
     labels = [int(test_ds[i][1]) for i in range(first, first + num)]
     test_labels = np.array([int(y) for y in test_ds.targets])
+    train_labels = torch.as_tensor(np.array([int(y) for y in train_ds.targets]))
     pool_idx = np.arange(POOL_START, len(test_ds))
     pool_by_class = {c: pool_idx[test_labels[pool_idx] == c] for c in range(10)}
-    train = train_ds.data.float() / 255.0
-    average = train.mean(0, keepdim=True)
-    class_avg = {c: train[train_ds.targets == c].mean(0, keepdim=True) for c in range(10)}
+    train = torch.as_tensor(np.asarray(train_ds.data)).float() / 255.0
+    train = train.unsqueeze(1) if train.dim() == 3 else train.permute(0, 3, 1, 2)  # (N, C, H, W)
+    average = train.mean(0)
+    class_avg = {c: train[train_labels == c].mean(0) for c in range(10)}
 
     rows = {}  # name -> {metric: [per-seed values]}
 
@@ -101,13 +104,13 @@ def main():
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out + ".json", "w") as f:
-        json.dump({"images": f"MNIST test {first}-{first + num - 1}", "seeds": args.seeds, "ks": args.ks,
+        json.dump({"dataset": args.dataset, "images": f"{args.dataset} test {first}-{first + num - 1}", "seeds": args.seeds, "ks": args.ks,
                    "baselines": summary, "per_seed": rows}, f, indent=2)
 
     def fmt(d):
         return f"{d['mean']:.3f}" if np.isnan(d["ci95"]) else f"{d['mean']:.3f} ± {d['ci95']:.3f}"
 
-    lines = [f"# No-information baselines (MNIST test images {first}-{first + num - 1})", "",
+    lines = [f"# No-information baselines ({args.dataset} test images {first}-{first + num - 1})", "",
              "A reconstruction must score clearly above the **label-aware baseline** to show a leak, "
              "because the attackers are given the labels. SSIM is the standard form; the old "
              "zero-padded SSIM is shown for comparison. ± is the 95% CI over seeds.", "",

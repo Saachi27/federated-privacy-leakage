@@ -6,8 +6,12 @@ export OMP_NUM_THREADS=1 PYTHONWARNINGS=ignore PYTHONUNBUFFERED=1
 PY=${PY:-.venv/bin/python}
 JOBS=${JOBS:-4}  # one per performance core; more runs slower overall on an M1
 SEEDS="0 1 2"
-STUDY_SEEDS="0 1 2 3 4"
-# The cosine attacker's TV weight
+# The final study: four settings (src/settings.py), 32 target images, 3 seeds.
+STUDY=results/study
+STUDY_SETTINGS=${STUDY_SETTINGS:-"mnist-fresh mnist-trained cifar10-fresh mnist-fedavg"}
+STUDY_SEEDS="0 1 2"
+STUDY_SIGMAS="0 1e-4 3e-4 1e-3 3e-3 1e-2 3e-2 1e-1"
+# The cosine TV weight for the supporting tables (core, extras)
 COSINE_TV=${COSINE_TV:-1e-3}
 RUNS=results/runs
 mkdir -p "$RUNS"
@@ -51,34 +55,54 @@ step() {  # step <log> <command...>: run one study step; the scripts skip finish
   "$@" > "$log" 2>&1 && echo "done $log" || echo "FAILED $log"
 }
 
+tuned() {  # tuned <setting> <key>: a value chosen by scripts/tune_attack.py
+  "$PY" -c "import json; print(json.load(open('$STUDY/$1/tuning.json'))['$2'])"
+}
+
 study() {
-  # 1.
-  for s in 0 1 2; do
-    out=results/checks/cosine_heldout_s$s.json
+  # 0.
+  for s in $STUDY_SEEDS; do
+    out=results/models/mnist_lenet_r20_s$s.pt
     [ -f "$out" ] && { echo "skip $out"; continue; }
-    step "$out.log" "$PY" scripts/validate_cosine.py --first-image 25 --num-images 25 --seed "$s" \
-      --arms "current (lr 0.1, 3000 iters, TV 1e-4)" "no TV" "TV 1e-3" "TV 3e-3" "TV 1e-2" \
-      --workers "$JOBS" --out "$out"
+    step "${out%.pt}.log" "$PY" scripts/train_attack_target.py --seed "$s" --out "$out"
+  done
+  # 1.
+  for st in $STUDY_SETTINGS; do
+    mkdir -p "$STUDY/$st"
+    [ -f "$STUDY/$st/tuning.json" ] && { echo "skip $STUDY/$st/tuning.json"; continue; }
+    step "$STUDY/$st/tuning.log" "$PY" scripts/tune_attack.py --setting "$st" --workers "$JOBS"
   done
   # 2.
-  step $RUNS/sum.out "$PY" scripts/attack_sum.py --ks 1 2 4 8 16 --num-images 32 \
-    --seeds $STUDY_SEEDS --cosine-tv "$COSINE_TV" --workers "$JOBS" --out $RUNS/sum
-  step $RUNS/sum_long.out "$PY" scripts/attack_sum.py --ks 8 16 --num-images 32 --iters 1200 \
-    --cosine-iters 12000 --seeds $STUDY_SEEDS --cosine-tv "$COSINE_TV" --workers "$JOBS" --out $RUNS/sum_long
+  for d in mnist cifar10; do
+    [ -f "$STUDY/baselines_$d.json" ] && { echo "skip $STUDY/baselines_$d.json"; continue; }
+    step "$STUDY/baselines_$d.log" "$PY" scripts/baselines.py --dataset "$d" --first-image 50 \
+      --num-images 32 --ks 1 2 4 8 16 --out "$STUDY/baselines_$d"
+  done
   # 3.
-  step $RUNS/noise.out "$PY" scripts/attack_noise_sum.py --ks 1 2 4 8 --num-images 16 \
-    --seeds $STUDY_SEEDS --cosine-tv "$COSINE_TV" --workers "$JOBS" --out $RUNS/noise
-  step $RUNS/matched.out "$PY" scripts/attack_matched_snr.py --ks 2 4 8 --sigmas 1e-4 3e-4 1e-3 3e-3 \
-    --num-images 16 --seeds $STUDY_SEEDS --cosine-tv "$COSINE_TV" --workers "$JOBS" --out $RUNS/matched
+  for st in $STUDY_SETTINGS; do
+    sigmas=$STUDY_SIGMAS; [ "$st" = mnist-fedavg ] && sigmas=0
+    step "$STUDY/$st/noise.out" "$PY" scripts/attack_noise_sum.py --setting "$st" --ks 1 2 4 8 \
+      --sigmas $sigmas --first-image 50 --num-images 32 --seeds $STUDY_SEEDS \
+      --clip "$(tuned "$st" clip)" --cosine-tv "$(tuned "$st" cosine_tv)" --workers "$JOBS" \
+      --out "$STUDY/$st/noise"
+  done
   # 4.
-  step results/baselines.log "$PY" scripts/baselines.py --first-image 50 --num-images 32 --out results/baselines
-  step results/baselines_noise.log "$PY" scripts/baselines.py --first-image 50 --num-images 16 \
-    --ks 1 2 4 8 --out results/baselines_noise
-  step results/baselines_cifar10.log "$PY" scripts/baselines_cifar10.py
+  for st in $STUDY_SETTINGS; do
+    step "$STUDY/$st/sum16.out" "$PY" scripts/attack_sum.py --setting "$st" --ks 16 --first-image 50 \
+      --num-images 32 --seeds $STUDY_SEEDS --cosine-tv "$(tuned "$st" cosine_tv)" --workers "$JOBS" \
+      --out "$STUDY/$st/sum16"
+  done
+  step "$STUDY/mnist-fresh/sum_long.out" "$PY" scripts/attack_sum.py --setting mnist-fresh --ks 8 16 \
+    --iters 1200 --cosine-iters 12000 --first-image 50 --num-images 32 --seeds $STUDY_SEEDS \
+    --cosine-tv "$(tuned mnist-fresh cosine_tv)" --workers "$JOBS" --out "$STUDY/mnist-fresh/sum_long"
   # 5.
   JOBS=$JOBS SEEDS="$SEEDS" PY=$PY bash scripts/check_dp.sh
   # 6.
-  step results/rq4.log "$PY" scripts/analyze_rq4.py
+  for st in $STUDY_SETTINGS; do
+    step "$STUDY/$st/rq4.log" "$PY" scripts/analyze_rq4.py --setting "$st"
+    step "$STUDY/$st/plot.log" "$PY" scripts/plot_final.py --setting "$st"
+  done
+  step "$STUDY/compare.log" "$PY" scripts/compare_settings.py
   step results/plot_final.log "$PY" scripts/plot_final.py
   step results/plot_dp.log "$PY" scripts/plot_dp.py
   step results/examples.log "$PY" scripts/make_examples_final.py --workers "$JOBS"
