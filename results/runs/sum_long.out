@@ -1,0 +1,20 @@
+W1112 21:44:36.845053 88414 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1112 21:44:46.954154 88430 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+seed 4: 1/12 done (K=8 basic, 315s)
+seed 4: 2/12 done (K=8 cosine, 384s)
+seed 4: 3/12 done (K=8 basic, 208s)
+seed 4: 4/12 done (K=8 cosine, 467s)
+seed 4: 5/12 done (K=8 basic, 252s)
+seed 4: 6/12 done (K=8 cosine, 283s)
+seed 4: 7/12 done (K=8 basic, 245s)
+seed 4: 8/12 done (K=8 cosine, 280s)
+seed 4: 9/12 done (K=16 basic, 346s)
+seed 4: 10/12 done (K=16 cosine, 454s)
+seed 4: 11/12 done (K=16 basic, 421s)
+seed 4: 12/12 done (K=16 cosine, 468s)
+| K | Attacker | Sums | Images | Mean SSIM (95% CI over seeds) | Success (SSIM≥0.9) | Best image per sum |
+|---|---|---|---|---|---|---|
+| 8 | basic | 20 | 160 | 0.536 ± 0.043 | 0% | 0.764 |
+| 8 | cosine | 20 | 160 | 0.557 ± 0.142 | 4% | 0.795 |
+| 16 | basic | 10 | 160 | 0.139 ± 0.034 | 0% | 0.286 |
+| 16 | cosine | 10 | 160 | 0.437 ± 0.135 | 0% | 0.729 |
