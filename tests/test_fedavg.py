@@ -154,3 +154,13 @@ def _run_all():
 
 if __name__ == "__main__":
     _run_all()
+
+
+def test_worst_client_budget_uses_largest_epsilon():
+    # A client with fewer steps but a much higher sampling rate spends more budget.
+    from types import SimpleNamespace
+    from src.engine import worst_client_budget
+    few_steps = SimpleNamespace(dp_noise=1.0, dp_sample_rate=0.1, dp_steps=200)
+    many_steps = SimpleNamespace(dp_noise=1.0, dp_sample_rate=0.01, dp_steps=2000)
+    worst = worst_client_budget([many_steps, few_steps])
+    assert worst["steps"] == 200 and worst["epsilon"] > 5

@@ -22,6 +22,14 @@ def resolve_model_cfg(cfg, meta):
     return model_cfg
 
 
+def worst_client_budget(clients, delta=1e-5):
+    """The largest per-client (epsilon, delta) budget among clients that took DP steps."""
+    from .privacy_accounting import summarize
+    budgets = [summarize(c.dp_noise, c.dp_sample_rate, c.dp_steps, delta=delta)
+               for c in clients if c.dp_steps > 0]
+    return max(budgets, key=lambda b: b["epsilon"])
+
+
 def run_federated(cfg, log=print, on_round=None):
     """Run FedAvg per the config dict."""
     set_seed(cfg["seed"])
@@ -90,25 +98,23 @@ def run_federated(cfg, log=print, on_round=None):
         global_model.load_state_dict(global_state)
 
         acc, test_loss = evaluate(global_model, test_loader, device)
-        train_loss = sum(losses) / len(losses)
+        # Clients' training losses are computed on private data with no noise
+        train_loss = None if dp else sum(losses) / len(losses)
         history.append({
             "round": rnd, "test_acc": acc, "test_loss": test_loss,
             "train_loss": train_loss, "clients": selected,
         })
+        shown = "n/a (private)" if train_loss is None else f"{train_loss:.4f}"
         log(f"[round {rnd:3d}/{cfg['rounds']}] "
-            f"train_loss={train_loss:.4f} test_loss={test_loss:.4f} "
+            f"train_loss={shown} test_loss={test_loss:.4f} "
             f"test_acc={acc:.4f}")
         if on_round:
             on_round(rnd, global_model, client_indices, train_ds)
 
     privacy = None
     if dp:
-        # Report the per-client privacy budget.
-        from .privacy_accounting import summarize
-        active = [c for c in clients if c.dp_steps > 0]
-        worst = max(active, key=lambda c: c.dp_steps)
-        privacy = summarize(worst.dp_noise, worst.dp_sample_rate, worst.dp_steps,
-                            delta=cfg.get("dp_delta", 1e-5))
+        # Report the worst per-client privacy budget.
+        privacy = worst_client_budget(clients, cfg.get("dp_delta", 1e-5))
         log(f"[privacy] DP budget per client: epsilon={privacy['epsilon']:.3f}, "
             f"delta={privacy['delta']:.0e}  "
             f"(sigma={privacy['noise_multiplier']}, steps={privacy['steps']})")
