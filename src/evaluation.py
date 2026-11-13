@@ -43,7 +43,7 @@ def run_attacker(model, observed, x, label, meta, defense, params):
     if attacker == "cosine":
         return attack.reconstruct_cosine(
             model, observed, x.shape, label,
-            iters=params["cosine_iters"], seed=params["attack_seed"])
+            iters=params["cosine_iters"], tv_weight=params["cosine_tv"], seed=params["attack_seed"])
     kwargs = {}
     if attacker == "adaptive":
         kwargs["label"] = label
@@ -79,7 +79,7 @@ def attack_image(image, label, meta, defense, params):
 
 def default_params(**overrides):
     p = {
-        "attacker": "basic", "mode": "idlg", "iters": 300, "cosine_iters": 3000,
+        "attacker": "basic", "mode": "idlg", "iters": 300, "cosine_iters": 3000, "cosine_tv": 1e-4,
         "model_seed": 42, "attack_seed": 0, "def_seed": 42,
         "dp_clip": 1.0, "dp_noise": 1.0,
         "num_clients": 5, "mask_scale": 1.0,

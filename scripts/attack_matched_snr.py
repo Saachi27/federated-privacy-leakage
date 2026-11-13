@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scripts.attack_noise_sum import noisy_mean_gradient
 from scripts.evaluate import load_images
-from src import attack, metrics
+from src import attack, metrics, recon_store
 from src.evaluation import build_attack_model
 
 
@@ -48,7 +48,7 @@ def _run(task):
     z = [torch.randn(g.shape, generator=gen) for g in per_example[0]]
     sigma_eff = matched_sigmas(per_example, clip, sigma)
     shape = (1,) + tuple(images[0].shape)
-    ssim, psnr, mse, losses = [], [], [], []
+    ssim, ssim_zp, psnr, mse, losses, recons = [], [], [], [], [], []
     for grads, x, y, s in zip(per_example, images, labels, sigma_eff):
         observed, _ = noisy_mean_gradient([grads], clip, s, z=z)
         if attacker == "cosine":
@@ -57,11 +57,14 @@ def _run(task):
         else:
             recon, info = attack.reconstruct(model, observed, shape, meta["num_classes"],
                                              label=[y], iters=iters, seed=seed)
-        m = metrics.all_metrics(torch.nan_to_num(recon[0], nan=0.0, posinf=1.0, neginf=0.0), x)
-        ssim.append(m["ssim"]), psnr.append(m["psnr"]), mse.append(m["mse"]), losses.append(info["final_loss"])
+        recon = torch.nan_to_num(recon, nan=0.0, posinf=1.0, neginf=0.0)
+        m = metrics.all_metrics(recon[0], x)
+        ssim.append(m["ssim"]), ssim_zp.append(m["ssim_zeropad"]), psnr.append(m["psnr"]), mse.append(m["mse"])
+        losses.append(info["final_loss"]), recons.append(recon[0])
     return {"k": k, "attacker": attacker, "seed": seed, "group": group, "sigma": sigma,
-            "sigma_eff": sigma_eff, "ssim": ssim, "psnr": psnr, "mse": mse, "final_loss": losses,
-            "seconds": time.time() - start}
+            "sigma_eff": sigma_eff, "ssim": ssim, "ssim_zeropad": ssim_zp, "psnr": psnr, "mse": mse,
+            "final_loss": losses, "seconds": time.time() - start,
+            "recon": recon_store.to_array(torch.stack(recons))}
 
 
 def make_tasks(args, seed, images, meta):
@@ -135,6 +138,7 @@ def main():
                 records.append(rec)
                 print(f"seed {seed}: {n + 1}/{len(tasks)} done (K={rec['k']} sigma={rec['sigma']:g} "
                       f"{rec['attacker']}, SSIM {np.mean(rec['ssim']):.3f}, {rec['seconds']:.0f}s)", flush=True)
+        recon_store.save(f"{args.out}_s{seed}_recon.npz", recon_store.pop_recons(records))
         with open(path, "w") as f:
             json.dump({"args": vars(args), "records": records}, f, indent=2)
         results += records

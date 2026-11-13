@@ -12,6 +12,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data import load_datasets
+from src import recon_store
 from src.evaluation import ATTACKERS, DEFENSES, aggregate, attack_image, default_params
 from src.privacy_accounting import compute_epsilon
 
@@ -34,8 +35,8 @@ def _init_worker():
 
 def _run_task(task):
     key, img, label, meta, defense, params = task
-    _, m = attack_image(img, label, meta, defense, params)
-    return key, m
+    recon, m = attack_image(img, label, meta, defense, params)
+    return key, {**m, "recon": recon_store.to_array(recon)}
 
 
 def run_tasks(tasks, workers):
@@ -118,12 +119,14 @@ def run_sweep(args, images, meta):
     for s in args.seeds:
         for defense, sigma, name in settings:
             params = default_params(iters=args.iters, dp_clip=args.dp_clip, dp_noise=sigma,
-                                    model_seed=s, attack_seed=s, def_seed=s)
+                                    cosine_tv=args.cosine_tv, model_seed=s, attack_seed=s, def_seed=s)
             for attacker in args.attackers:
                 for img, label in images:
                     tasks.append(((name, attacker), img, label, meta, defense,
                                   {**params, "attacker": attacker}))
     records = run_tasks(tasks, args.workers)
+    recon_store.save(args.out + "_sweep_recon.npz",
+                     recon_store.pop_recons([r for recs in records.values() for r in recs]))
 
     sweep = []
     for defense, sigma, name in settings:
@@ -163,6 +166,8 @@ def main():
     p.add_argument("--dp-clip", type=float, default=1.0)
     p.add_argument("--num-clients", type=int, default=5)
     p.add_argument("--success-ssim", type=float, default=0.9)
+    p.add_argument("--cosine-tv", type=float, default=1e-4,
+                   help="cosine attacker's TV weight (chosen with scripts/validate_cosine.py)")
     p.add_argument("--seeds", nargs="+", type=int, default=[0],
                    help="independent trial seeds; each varies victim+attack+defense RNG")
     p.add_argument("--dp-sweep", nargs="+", type=float, default=None,
@@ -185,7 +190,7 @@ def main():
     for s in args.seeds:
         params = default_params(iters=args.iters, dp_clip=args.dp_clip,
                                 dp_noise=args.dp_noise, num_clients=args.num_clients,
-                                model_seed=s, attack_seed=s, def_seed=s)
+                                cosine_tv=args.cosine_tv, model_seed=s, attack_seed=s, def_seed=s)
         for attacker in args.attackers:
             for defense in DEFENSES:
                 for img, label in images:
@@ -215,6 +220,8 @@ def main():
             print(f"  {line}")
 
     flat = lambda d: {f"{a}/{k}": v for (a, k), v in d.items()}
+    recon_store.save(args.out + "_recon.npz",
+                     recon_store.pop_recons([r for recs in all_records.values() for r in recs]))
     with open(args.out + ".json", "w") as f:
         json.dump({"args": vars(args), "aggregates": flat(aggregates),
                    "per_seed_ssim": flat(per_seed_ssim), "records": flat(all_records)}, f, indent=2)

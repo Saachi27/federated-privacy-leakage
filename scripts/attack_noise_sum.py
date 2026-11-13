@@ -13,9 +13,9 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.attack_sum import match_images
+from scripts.attack_sum import match_and_order
 from scripts.evaluate import load_images
-from src import attack
+from src import attack, recon_store
 from src.evaluation import build_attack_model
 from src.privacy_accounting import compute_epsilon
 
@@ -66,12 +66,13 @@ def _run(task):
     else:
         recon, info = attack.reconstruct(model, observed, shape, meta["num_classes"],
                                          label=labels, iters=iters, seed=seed)
-    records = match_images(recon, images)
+    records, ordered = match_and_order(recon, images)
     return {"k": k, "attacker": attacker, "seed": seed, "group": group, "sigma": sigma,
             "epsilon": epsilon_for(sigma), "frac_clipped": frac_clipped,
-            "ssim": [r["ssim"] for r in records], "psnr": [r["psnr"] for r in records],
-            "mse": [r["mse"] for r in records], "final_loss": info["final_loss"],
-            "seconds": time.time() - start}
+            "ssim": [r["ssim"] for r in records], "ssim_zeropad": [r["ssim_zeropad"] for r in records],
+            "psnr": [r["psnr"] for r in records], "mse": [r["mse"] for r in records],
+            "final_loss": info["final_loss"], "seconds": time.time() - start,
+            "recon": recon_store.to_array(ordered)}
 
 
 def make_tasks(args, seed, images, meta):
@@ -157,6 +158,7 @@ def main():
                 records.append(rec)
                 print(f"seed {seed}: {n + 1}/{len(tasks)} done (K={rec['k']} sigma={rec['sigma']:g} "
                       f"{rec['attacker']}, SSIM {np.mean(rec['ssim']):.3f}, {rec['seconds']:.0f}s)", flush=True)
+        recon_store.save(f"{args.out}_s{seed}_recon.npz", recon_store.pop_recons(records))
         with open(path, "w") as f:
             json.dump({"args": vars(args), "records": records}, f, indent=2)
         results += records

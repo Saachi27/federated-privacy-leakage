@@ -15,17 +15,24 @@ from scipy.optimize import linear_sum_assignment
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scripts.evaluate import load_images
-from src import attack, metrics
+from src import attack, metrics, recon_store
 from src.evaluation import build_attack_model
 
 
 def match_images(recon, originals):
     """Pair reconstructions with originals to maximize SSIM; return one record per image."""
+    return match_and_order(recon, originals)[0]
+
+
+def match_and_order(recon, originals):
+    """Pair reconstructions with originals to maximize SSIM."""
     k = len(originals)
-    scores = [[metrics.all_metrics(torch.nan_to_num(recon[i], nan=0.0, posinf=1.0, neginf=0.0), originals[j])
-               for j in range(k)] for i in range(k)]
+    recon = torch.nan_to_num(recon, nan=0.0, posinf=1.0, neginf=0.0)
+    scores = [[metrics.all_metrics(recon[i], originals[j]) for j in range(k)] for i in range(k)]
     rows, cols = linear_sum_assignment(np.array([[s["ssim"] for s in row] for row in scores]), maximize=True)
-    return [scores[i][j] for i, j in zip(rows, cols)]
+    by_original = {int(j): int(i) for i, j in zip(rows, cols)}
+    order = [by_original[j] for j in range(k)]
+    return [scores[order[j]][j] for j in range(k)], recon[order]
 
 
 def _init_worker():
@@ -45,11 +52,12 @@ def _run(task):
     else:
         recon, info = attack.reconstruct(model, observed, x.shape, meta["num_classes"],
                                          label=labels, iters=iters, seed=seed)
-    records = match_images(recon, images)
+    records, ordered = match_and_order(recon, images)
     return {"k": k, "attacker": attacker, "seed": seed, "group": group,
-            "ssim": [r["ssim"] for r in records], "psnr": [r["psnr"] for r in records],
-            "mse": [r["mse"] for r in records], "final_loss": info["final_loss"],
-            "seconds": time.time() - start}
+            "ssim": [r["ssim"] for r in records], "ssim_zeropad": [r["ssim_zeropad"] for r in records],
+            "psnr": [r["psnr"] for r in records], "mse": [r["mse"] for r in records],
+            "final_loss": info["final_loss"], "seconds": time.time() - start,
+            "recon": recon_store.to_array(ordered)}
 
 
 def make_tasks(args, seed, images, meta):
@@ -119,6 +127,7 @@ def main():
                 records.append(rec)
                 print(f"seed {seed}: {n + 1}/{len(tasks)} done (K={rec['k']} {rec['attacker']}, "
                       f"{rec['seconds']:.0f}s)", flush=True)
+        recon_store.save(f"{args.out}_s{seed}_recon.npz", recon_store.pop_recons(records))
         with open(path, "w") as f:
             json.dump({"args": vars(args), "records": records}, f, indent=2)
         results += records

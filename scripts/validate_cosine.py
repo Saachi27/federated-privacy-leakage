@@ -48,7 +48,8 @@ def _run(task):
         if best is None or info["final_loss"] < best[1]["final_loss"]:
             best = recon, info
     m = metrics.all_metrics(best[0][0], img)
-    return arm, {"image": index, "ssim": m["ssim"], "psnr": m["psnr"], "final_loss": best[1]["final_loss"]}
+    return arm, {"image": index, "ssim": m["ssim"], "ssim_zeropad": m["ssim_zeropad"], "psnr": m["psnr"],
+                 "final_loss": best[1]["final_loss"]}
 
 
 def main():
