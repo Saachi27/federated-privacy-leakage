@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scripts.evaluate import load_images
 from src import attack, metrics, recon_store
-from src.evaluation import build_attack_model
+from src.settings import SETTINGS, build_target, fedavg_update
 
 
 def match_images(recon, originals):
@@ -41,11 +41,14 @@ def _init_worker():
 
 
 def _run(task):
-    k, attacker, seed, group, images, labels, meta, iters, cosine_iters, cosine_tv = task
+    k, attacker, seed, group, images, labels, meta, iters, cosine_iters, cosine_tv, setting = task
     start = time.time()
-    model = build_attack_model(meta, seed)
+    model = build_target(meta, seed, setting["model_path"])
     x, y = torch.stack(images), torch.tensor(labels)
-    observed = attack.compute_gradient(model, x, y)
+    if setting["update"] == "fedavg":
+        observed = fedavg_update(model, x, y, setting["local_steps"], setting["local_lr"])
+    else:
+        observed = attack.compute_gradient(model, x, y)
     if attacker == "cosine":
         recon, info = attack.reconstruct_cosine(model, observed, x.shape, labels, iters=cosine_iters,
                                                 tv_weight=cosine_tv, seed=seed)
@@ -69,7 +72,9 @@ def make_tasks(args, seed, images, meta):
             chosen = [images[int(i)] for i in order[group * k:(group + 1) * k]]
             for attacker in args.attackers:
                 tasks.append((k, attacker, seed, group, [c[0] for c in chosen], [c[1] for c in chosen],
-                              meta, args.iters, args.cosine_iters, args.cosine_tv))
+                              meta, args.iters, args.cosine_iters, args.cosine_tv,
+                              {"model_path": args.model_path, "update": args.update,
+                               "local_steps": args.local_steps, "local_lr": args.local_lr}))
     return tasks
 
 
@@ -97,6 +102,13 @@ def summarize(results, args):
 
 def main():
     p = argparse.ArgumentParser()
+    p.add_argument("--setting", choices=list(SETTINGS), default=None,
+                   help="preset for --dataset, --model-path and --update (src/settings.py)")
+    p.add_argument("--dataset", choices=["mnist", "cifar10"], default="mnist")
+    p.add_argument("--model-path", default=None, help="trained checkpoint, with {seed}; fresh model if unset")
+    p.add_argument("--update", choices=["gradient", "fedavg"], default="gradient")
+    p.add_argument("--local-steps", type=int, default=5)
+    p.add_argument("--local-lr", type=float, default=0.01)
     p.add_argument("--ks", nargs="+", type=int, default=[1, 2, 4, 8, 16])
     p.add_argument("--attackers", nargs="+", choices=["basic", "cosine"], default=["basic", "cosine"])
     p.add_argument("--num-images", type=int, default=32)
@@ -109,8 +121,11 @@ def main():
     p.add_argument("--workers", type=int, default=2)
     p.add_argument("--out", default="results/runs/sum")
     args = p.parse_args()
+    if args.setting:
+        for key, value in SETTINGS[args.setting].items():
+            setattr(args, key, value)
 
-    images, meta = load_images("mnist", args.first_image + args.num_images)
+    images, meta = load_images(args.dataset, args.first_image + args.num_images)
     images = images[args.first_image:]
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     results = []
@@ -135,7 +150,8 @@ def main():
     lines = summarize(results, args)
     print("\n".join(lines))
     with open(f"{args.out}_summary.md", "w") as f:
-        f.write(f"# Attack on the sum over K examples (MNIST, fresh LeNet, {len(args.seeds)} seeds)\n\n")
+        title = args.setting or f"{args.dataset}, {'trained' if args.model_path else 'fresh'} LeNet, {args.update}"
+        f.write(f"# Attack on the sum over K examples ({title}, {len(args.seeds)} seeds)\n\n")
         f.write("\n".join(lines) + "\n")
 
 

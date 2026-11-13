@@ -1,0 +1,40 @@
+W1113 13:16:25.743698 61576 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 13:17:05.899866 61635 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 13:17:05.900330 61633 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 13:17:05.899857 61639 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 13:17:05.916046 61634 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 13:17:05.924365 61632 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 13:17:05.947530 61637 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 13:17:05.961695 61640 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 13:17:06.736411 61638 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+5/125 attacks done
+10/125 attacks done
+15/125 attacks done
+20/125 attacks done
+25/125 attacks done
+30/125 attacks done
+35/125 attacks done
+40/125 attacks done
+45/125 attacks done
+50/125 attacks done
+55/125 attacks done
+60/125 attacks done
+65/125 attacks done
+70/125 attacks done
+75/125 attacks done
+80/125 attacks done
+85/125 attacks done
+90/125 attacks done
+95/125 attacks done
+100/125 attacks done
+105/125 attacks done
+110/125 attacks done
+115/125 attacks done
+120/125 attacks done
+125/125 attacks done
+current (lr 0.1, 3000 iters, TV 1e-4)    SSIM 1.000 ± 0.000  success 100%
+no TV                                    SSIM 0.964 ± 0.061  success 84%
+TV 1e-3                                  SSIM 0.987 ± 0.008  success 100%
+TV 3e-3                                  SSIM 0.934 ± 0.037  success 84%
+TV 1e-2                                  SSIM 0.786 ± 0.076  success 4%
+Saved -> results/checks/cosine_heldout_s1.json

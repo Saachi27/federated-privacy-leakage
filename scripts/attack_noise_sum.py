@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.attack_sum import match_and_order
 from scripts.evaluate import load_images
 from src import attack, recon_store
-from src.evaluation import build_attack_model
+from src.settings import SETTINGS, build_target, fedavg_update, per_example_gradients
 from src.privacy_accounting import compute_epsilon
 
 DEFAULT_SIGMAS = [0.0, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 1e-1]
@@ -50,24 +50,37 @@ def _init_worker():
     warnings.filterwarnings("ignore")
 
 
-def _run(task):
-    k, attacker, seed, group, sigma, images, labels, meta, clip, iters, cosine_iters, cosine_tv = task
-    start = time.time()
-    model = build_attack_model(meta, seed)
-    per_example = [attack.compute_gradient(model, x[None], torch.tensor([y])) for x, y in zip(images, labels)]
+def observe(t, model):
+    """What the server sees for this task: (observed update, fraction of examples clipped)."""
+    k, seed, group, sigma = t["k"], t["seed"], t["group"], t["sigma"]
+    if t["update"] == "fedavg":
+        # Noise on a multi-step client update protects the whole client (user-level DP)
+        assert sigma == 0, "the fedavg setting is run without noise"
+        x, y = torch.stack(t["images"]), torch.tensor(t["labels"])
+        return fedavg_update(model, x, y, t["local_steps"], t["local_lr"]), 0.0
+    per_example = per_example_gradients(model, t["images"], t["labels"])
     # Same z for every sigma at this (seed, K, group).
     gen = torch.Generator().manual_seed(seed * 1_000_003 + k * 1009 + group)
     z = [torch.randn(g.shape, generator=gen) for g in per_example[0]]
-    observed, frac_clipped = noisy_mean_gradient(per_example, clip, sigma, z=z)
+    return noisy_mean_gradient(per_example, t["clip"], sigma, z=z)
+
+
+def _run(t):
+    k, attacker, seed, images, labels, meta = t["k"], t["attacker"], t["seed"], t["images"], t["labels"], t["meta"]
+    start = time.time()
+    model = build_target(meta, seed, t["model_path"])
+    observed, frac_clipped = observe(t, model)
     shape = (k,) + tuple(images[0].shape)
     if attacker == "cosine":
-        recon, info = attack.reconstruct_cosine(model, observed, shape, labels, iters=cosine_iters,
-                                                tv_weight=cosine_tv, seed=seed)
+        recon, info = attack.reconstruct_cosine(model, observed, shape, labels, iters=t["cosine_iters"],
+                                                tv_weight=t["cosine_tv"], seed=seed)
     else:
         recon, info = attack.reconstruct(model, observed, shape, meta["num_classes"],
-                                         label=labels, iters=iters, seed=seed)
+                                         label=labels, iters=t["iters"], seed=seed)
+    group, sigma = t["group"], t["sigma"]
     records, ordered = match_and_order(recon, images)
     return {"k": k, "attacker": attacker, "seed": seed, "group": group, "sigma": sigma,
+            "cosine_tv": t["cosine_tv"] if attacker == "cosine" else None,
             "epsilon": epsilon_for(sigma), "frac_clipped": frac_clipped,
             "ssim": [r["ssim"] for r in records], "ssim_zeropad": [r["ssim_zeropad"] for r in records],
             "psnr": [r["psnr"] for r in records], "mse": [r["mse"] for r in records],
@@ -84,11 +97,14 @@ def make_tasks(args, seed, images, meta):
             chosen = [images[int(i)] for i in order[group * k:(group + 1) * k]]
             for sigma in args.sigmas:
                 for attacker in args.attackers:
-                    tasks.append((k, attacker, seed, group, sigma, [c[0] for c in chosen],
-                                  [c[1] for c in chosen], meta, args.clip, args.iters,
-                                  args.cosine_iters, args.cosine_tv))
+                    tasks.append({"k": k, "attacker": attacker, "seed": seed, "group": group, "sigma": sigma,
+                                  "images": [c[0] for c in chosen], "labels": [c[1] for c in chosen],
+                                  "meta": meta, "clip": args.clip, "iters": args.iters,
+                                  "cosine_iters": args.cosine_iters, "cosine_tv": args.cosine_tv,
+                                  "model_path": args.model_path, "update": args.update,
+                                  "local_steps": args.local_steps, "local_lr": args.local_lr})
     # Slow tasks first so the pool does not end on one long straggler.
-    tasks.sort(key=lambda t: -(t[0] * (10 if t[1] == "cosine" else 1)))
+    tasks.sort(key=lambda t: -(t["k"] * (10 if t["attacker"] == "cosine" else 1)))
     return tasks
 
 
@@ -125,6 +141,13 @@ def summarize(results, args):
 
 def main():
     p = argparse.ArgumentParser()
+    p.add_argument("--setting", choices=list(SETTINGS), default=None,
+                   help="preset for --dataset, --model-path and --update (src/settings.py)")
+    p.add_argument("--dataset", choices=["mnist", "cifar10"], default="mnist")
+    p.add_argument("--model-path", default=None, help="trained checkpoint, with {seed}; fresh model if unset")
+    p.add_argument("--update", choices=["gradient", "fedavg"], default="gradient")
+    p.add_argument("--local-steps", type=int, default=5)
+    p.add_argument("--local-lr", type=float, default=0.01)
     p.add_argument("--ks", nargs="+", type=int, default=[1, 2, 4, 8])
     p.add_argument("--sigmas", nargs="+", type=float, default=DEFAULT_SIGMAS)
     p.add_argument("--clip", type=float, default=30.0, help="per-example clip norm C (see docstring)")
@@ -138,8 +161,11 @@ def main():
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--out", default="results/runs/noise")
     args = p.parse_args()
+    if args.setting:
+        for key, value in SETTINGS[args.setting].items():
+            setattr(args, key, value)
 
-    images, meta = load_images("mnist", args.first_image + args.num_images)
+    images, meta = load_images(args.dataset, args.first_image + args.num_images)
     images = images[args.first_image:]
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     print("epsilon per sigma (one release, delta=1e-5): " +
@@ -163,7 +189,8 @@ def main():
             json.dump({"args": vars(args), "records": records}, f, indent=2)
         results += records
 
-    lines = ["# Noise on the sum over K examples (MNIST, fresh LeNet)", ""] + summarize(results, args)
+    title = args.setting or f"{args.dataset}, {'trained' if args.model_path else 'fresh'} LeNet, {args.update}"
+    lines = [f"# Noise on the sum over K examples ({title})", ""] + summarize(results, args)
     with open(f"{args.out}_summary.md", "w") as f:
         f.write("\n".join(lines) + "\n")
     print("\n".join(lines))
