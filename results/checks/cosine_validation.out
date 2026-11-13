@@ -1,0 +1,40 @@
+W1104 13:10:11.947191 36922 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1104 13:10:18.546910 36932 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1104 13:10:18.616284 36931 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+5/150 attacks done
+10/150 attacks done
+15/150 attacks done
+20/150 attacks done
+25/150 attacks done
+30/150 attacks done
+35/150 attacks done
+40/150 attacks done
+45/150 attacks done
+50/150 attacks done
+55/150 attacks done
+60/150 attacks done
+65/150 attacks done
+70/150 attacks done
+75/150 attacks done
+80/150 attacks done
+85/150 attacks done
+90/150 attacks done
+95/150 attacks done
+100/150 attacks done
+105/150 attacks done
+110/150 attacks done
+115/150 attacks done
+120/150 attacks done
+125/150 attacks done
+130/150 attacks done
+135/150 attacks done
+140/150 attacks done
+145/150 attacks done
+150/150 attacks done
+current (lr 0.1, 3000 iters, TV 1e-4)    SSIM 0.867 ± 0.186  success 64%
+lr 0.03                                  SSIM 0.835 ± 0.204  success 48%
+4800 iters                               SSIM 0.920 ± 0.141  success 72%
+no TV                                    SSIM 0.650 ± 0.150  success 4%
+TV 1e-3                                  SSIM 0.963 ± 0.057  success 96%
+4 restarts                               SSIM 0.896 ± 0.174  success 68%
+Saved -> results/checks/cosine_validation.json

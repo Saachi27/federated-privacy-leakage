@@ -54,6 +54,33 @@ def test_masking_preserves_aggregate():
         assert torch.allclose(true_sum, masked_sum, atol=1e-5)
 
 
+def test_masked_sum_equals_batch_gradient():
+    # K clients upload masked gradients of one image each.
+    model, k = _toy_model(), 4
+    set_seed(1)
+    x, y = torch.rand(k, 1, 28, 28), torch.tensor([0, 3, 3, 7])
+    per_client = [attack.compute_gradient(model, x[i:i + 1], y[i:i + 1]) for i in range(k)]
+    masks = defenses.pairwise_masks(per_client[0], k, base_seed=5)
+    uploads = [[g.double() + m.double() for g, m in zip(grads, mask)]
+               for grads, mask in zip(per_client, masks)]
+    batch = attack.compute_gradient(model, x, y)
+    for i, b in enumerate(batch):
+        mean = sum(u[i] for u in uploads) / k
+        assert torch.allclose(mean.float(), b, rtol=1e-3, atol=1e-5)
+
+
+def test_batch_attack_runs_with_known_labels():
+    # Two images, true labels given: the attack returns one reconstruction per image.
+    model = _toy_model()
+    set_seed(1)
+    x, y = torch.rand(2, 1, 28, 28), [1, 4]
+    observed = attack.compute_gradient(model, x, torch.tensor(y))
+    recon, info = attack.reconstruct(model, observed, x.shape, 10, label=y, iters=2)
+    assert recon.shape == x.shape and info["label"] == y
+    recon, info = attack.reconstruct_cosine(model, observed, x.shape, y, iters=2)
+    assert recon.shape == x.shape and info["label"] == y
+
+
 def test_dp_clips_and_noises():
     torch.manual_seed(0)
     grads = [torch.randn(10) * 5]  # large norm

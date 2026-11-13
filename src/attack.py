@@ -34,7 +34,7 @@ def reconstruct(model, observed_grads, input_shape, num_classes,
 
     if mode == "idlg":
         label = extract_label(observed_grads) if label is None else label
-        label_t = torch.tensor([label], device=device)
+        label_t = torch.as_tensor(label, device=device).view(-1)  # one label per example
         params = [dummy_x]
     elif mode == "dlg":
         # Optimise the label jointly as free logits (soft label via softmax).
@@ -78,7 +78,7 @@ def reconstruct_cosine(model, observed_grads, input_shape, label,
     device = device or next(model.parameters()).device
     gen = torch.Generator(device="cpu").manual_seed(seed)
     dummy_x = torch.rand(input_shape, generator=gen).to(device).requires_grad_(True)
-    label_t = torch.tensor([label], device=device)
+    label_t = torch.as_tensor(label, device=device).view(-1)  # one label per example
     observed_norm = torch.sqrt(sum((g ** 2).sum() for g in observed_grads))
 
     optimizer = torch.optim.Adam([dummy_x], lr=lr)
