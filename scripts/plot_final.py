@@ -14,8 +14,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.plotting import GRID, INK, MARKERS, MUTED, SERIES, plt, style  # noqa: E402
 
 RES = "results"
-RUNS = os.path.join(RES, "runs")  # set from --runs-dir
-OUT = RES  # set from --out-dir
+RUNS = os.path.join(RES, "runs")  # set in main()
+OUT = RES  # set in main()
+STUDY = False  # True for the results/study layout
+TITLE = "MNIST, fresh LeNet"
+SETTING_TITLES = {
+    "mnist-fresh": "MNIST, fresh LeNet",
+    "mnist-trained": "MNIST, trained LeNet",
+    "cifar10-fresh": "CIFAR-10, fresh LeNet",
+    "mnist-fedavg": "MNIST, fresh LeNet, FedAvg update",
+}
 ATTACKERS = [("basic", "Basic (iDLG, L-BFGS)"), ("cosine", "Cosine (Geiping et al.)")]
 BLACK, CLASS_AVG = "all black", "class average (knows labels)"
 
@@ -28,8 +36,7 @@ def load_records(pattern):
     return records
 
 
-def load_baselines(name):
-    path = os.path.join(RES, name)
+def load_baselines(path):
     if not os.path.exists(path):
         print(f"No {path}; run scripts/baselines.py first. Drawing without baselines.")
         return {}
@@ -77,10 +84,18 @@ def draw_flat_baselines(ax, base, key="ssim"):
             ax.axhline(v, color=MUTED, ls=ls, lw=1.2, label=f"Reference: {name} ({v:.2f})")
 
 
+def sweep_records():
+    """Records of the attack on the sum without noise, one list over every K."""
+    if not STUDY:
+        return load_records(os.path.join(RUNS, "sum_s[0-9]*.json"))
+    noise = [r for r in load_records(os.path.join(RUNS, "noise_s[0-9]*.json")) if r.get("sigma", 0) == 0]
+    return noise + load_records(os.path.join(RUNS, "sum16_s[0-9]*.json"))
+
+
 def fig_ssim_vs_k(base):
-    recs = load_records(os.path.join(RUNS, "sum_s[0-9]*.json"))
+    recs = sweep_records()
     if not recs:
-        print(f"skip fig_ssim_vs_k: no {RUNS}/sum_s*.json")
+        print(f"skip fig_ssim_vs_k: no attack-on-the-sum results in {RUNS}")
         return
     key = score_key(recs)
     longs = load_records(os.path.join(RUNS, "sum_long_s[0-9]*.json"))
@@ -108,7 +123,7 @@ def fig_ssim_vs_k(base):
     ax.set_ylim(0, 1.02)
     ax.set_xlabel("K, examples summed into one update")
     ax.set_ylabel(y_label(key))
-    ax.set_title("Attack on the sum vs no-information baselines (MNIST, fresh LeNet)")
+    ax.set_title(f"Attack on the sum vs no-information baselines ({TITLE})")
     ax.legend(fontsize=8, loc="center left", bbox_to_anchor=(1.01, 0.5))
     out = os.path.join(OUT, "fig_ssim_vs_k.png")
     fig.savefig(out)
@@ -117,9 +132,9 @@ def fig_ssim_vs_k(base):
 
 
 def fig_distributions(base):
-    recs = load_records(os.path.join(RUNS, "sum_s[0-9]*.json"))
+    recs = sweep_records()
     if not recs:
-        print(f"skip fig_ssim_distributions: no {RUNS}/sum_s*.json")
+        print(f"skip fig_ssim_distributions: no attack-on-the-sum results in {RUNS}")
         return
     key = score_key(recs)
     ks = sorted({r["k"] for r in recs})
@@ -153,7 +168,7 @@ def fig_distributions(base):
          for k in ks for att, _ in ATTACKERS if any(r["k"] == k and r["attacker"] == att for r in recs)}
     per = f"{n.pop()} images per violin" if len(n) == 1 else "images per violin vary"
     ax.set_ylabel(y_label(key, "SSIM per image", "median line"))
-    ax.set_title(f"Distribution of per-image SSIM, attack on the sum ({per})")
+    ax.set_title(f"Per-image SSIM, attack on the sum, {TITLE} ({per})")
     ax.legend(fontsize=8, loc="center left", bbox_to_anchor=(1.01, 0.5))
     out = os.path.join(OUT, "fig_ssim_distributions.png")
     fig.savefig(out)
@@ -172,6 +187,9 @@ def fig_ssim_vs_noise(base):
     recs = load_records(os.path.join(RUNS, "noise_s[0-9]*.json"))
     if not recs:
         print(f"skip fig_ssim_vs_noise: no {RUNS}/noise_s*.json yet (scripts/attack_noise_sum.py)")
+        return
+    if not any(_noise_level(r) > 0 for r in recs):
+        print(f"skip fig_ssim_vs_noise: {RUNS} has no noise levels above 0")
         return
     key = score_key(recs)
     attackers = [a for a in ATTACKERS if any(r.get("attacker", "basic") == a[0] for r in recs)]
@@ -207,7 +225,7 @@ def fig_ssim_vs_noise(base):
     axes[0][-1].plot([], [], color=MUTED, ls="--", lw=0.9,
                      label="No information, knows labels, at that K (dashed, same colour)")
     axes[0][-1].legend(fontsize=8, loc="center left", bbox_to_anchor=(1.01, 0.5))
-    fig.suptitle("Attack on the noisy sum vs no-information baselines", fontsize=11)
+    fig.suptitle(f"Attack on the noisy sum vs no-information baselines ({TITLE})", fontsize=11)
     out = os.path.join(OUT, "fig_ssim_vs_noise.png")
     fig.savefig(out)
     plt.close(fig)
@@ -253,19 +271,33 @@ def fig_pipeline():
 
 
 def main():
-    global RUNS, OUT
+    global RUNS, OUT, STUDY, TITLE
     p = argparse.ArgumentParser()
-    p.add_argument("--runs-dir", default=RUNS)
-    p.add_argument("--out-dir", default=OUT)
+    p.add_argument("--setting", default=None, help="draw one setting of the study into <root>/<setting>/")
+    p.add_argument("--root", default="results/study")
+    p.add_argument("--runs-dir", default=None, help="legacy layout (results/runs style)")
+    p.add_argument("--out-dir", default=None)
     args = p.parse_args()
-    RUNS, OUT = args.runs_dir, args.out_dir
-    os.makedirs(OUT, exist_ok=True)
     style()
-    base = load_baselines("baselines.json")
-    fig_ssim_vs_k(base)
-    fig_distributions(base)
-    fig_ssim_vs_noise(load_baselines("baselines_noise.json"))
-    fig_pipeline()
+    if args.runs_dir:
+        RUNS, OUT, STUDY, TITLE = args.runs_dir, args.out_dir or RES, False, "MNIST, fresh LeNet"
+        sweep_base = load_baselines(os.path.join(RES, "baselines.json"))
+        noise_base = load_baselines(os.path.join(RES, "baselines_noise.json"))
+        draw_pipeline = True
+    else:
+        from src.settings import SETTINGS
+        setting = args.setting or "mnist-fresh"
+        RUNS, STUDY, TITLE = os.path.join(args.root, setting), True, SETTING_TITLES.get(setting, setting)
+        OUT = args.out_dir or (RES if args.setting is None else RUNS)
+        sweep_base = noise_base = load_baselines(
+            os.path.join(args.root, f"baselines_{SETTINGS[setting]['dataset']}.json"))
+        draw_pipeline = args.setting is None
+    os.makedirs(OUT, exist_ok=True)
+    fig_ssim_vs_k(sweep_base)
+    fig_distributions(sweep_base)
+    fig_ssim_vs_noise(noise_base)
+    if draw_pipeline:
+        fig_pipeline()
 
 
 if __name__ == "__main__":

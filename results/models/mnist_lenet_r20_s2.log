@@ -1,0 +1,22 @@
+[setup] device=cpu | dataset=mnist | clients=10 fraction=1.0
+[round   1/20] train_loss=2.4743 test_loss=1.8166 test_acc=0.5502
+[round   2/20] train_loss=1.3459 test_loss=0.8002 test_acc=0.7836
+[round   3/20] train_loss=0.7070 test_loss=0.5412 test_acc=0.8459
+[round   4/20] train_loss=0.5397 test_loss=0.4486 test_acc=0.8713
+[round   5/20] train_loss=0.4641 test_loss=0.3965 test_acc=0.8858
+[round   6/20] train_loss=0.4186 test_loss=0.3606 test_acc=0.8981
+[round   7/20] train_loss=0.3852 test_loss=0.3375 test_acc=0.9020
+[round   8/20] train_loss=0.3610 test_loss=0.3192 test_acc=0.9086
+[round   9/20] train_loss=0.3427 test_loss=0.3018 test_acc=0.9133
+[round  10/20] train_loss=0.3277 test_loss=0.2924 test_acc=0.9156
+[round  11/20] train_loss=0.3141 test_loss=0.2790 test_acc=0.9204
+[round  12/20] train_loss=0.3019 test_loss=0.2696 test_acc=0.9222
+[round  13/20] train_loss=0.2910 test_loss=0.2612 test_acc=0.9242
+[round  14/20] train_loss=0.2831 test_loss=0.2546 test_acc=0.9258
+[round  15/20] train_loss=0.2747 test_loss=0.2484 test_acc=0.9284
+[round  16/20] train_loss=0.2676 test_loss=0.2426 test_acc=0.9295
+[round  17/20] train_loss=0.2608 test_loss=0.2364 test_acc=0.9315
+[round  18/20] train_loss=0.2542 test_loss=0.2302 test_acc=0.9317
+[round  19/20] train_loss=0.2480 test_loss=0.2250 test_acc=0.9346
+[round  20/20] train_loss=0.2430 test_loss=0.2201 test_acc=0.9363
+Saved -> results/models/mnist_lenet_r20_s2.pt (test accuracy 0.9363)
