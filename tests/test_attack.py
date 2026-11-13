@@ -33,6 +33,38 @@ def test_metrics_worse_for_noise():
     assert m["ssim"] < 0.9 and m["mse"] > 0
 
 
+def _digit_like(seed=0):
+    # A bright stroke on a black background, like MNIST.
+    g = torch.Generator().manual_seed(seed)
+    img = torch.zeros(1, 28, 28)
+    img[0, 6:22, 12:16] = 0.8 + 0.2 * torch.rand(16, 4, generator=g)
+    img[0, 6:9, 9:19] = 0.9
+    return img
+
+
+def test_ssim_matches_skimage():
+    import pytest
+    sk = pytest.importorskip("skimage.metrics")
+    g = torch.Generator().manual_seed(0)
+    pairs = [(_digit_like(), torch.zeros(1, 28, 28)),
+             (_digit_like(), (_digit_like() + 0.15 * torch.randn(1, 28, 28, generator=g)).clamp(0, 1)),
+             (torch.rand(3, 32, 32, generator=g), torch.rand(3, 32, 32, generator=g))]
+    for a, b in pairs:
+        ref = sk.structural_similarity(
+            a.permute(1, 2, 0).numpy(), b.permute(1, 2, 0).numpy(), data_range=1.0,
+            gaussian_weights=True, sigma=1.5, use_sample_covariance=False, channel_axis=2)
+        assert abs(metrics.ssim(a, b) - ref) < 1e-4, (metrics.ssim(a, b), ref)
+
+
+def test_blank_image_does_not_beat_noisy_true_digit():
+    # The old zero-padded SSIM scored a blank image above a noisy but readable copy.
+    digit = _digit_like()
+    noisy = (digit + 0.15 * torch.randn(1, 28, 28, generator=torch.Generator().manual_seed(1))).clamp(0, 1)
+    blank = torch.zeros_like(digit)
+    assert metrics.ssim(noisy, digit) > metrics.ssim(blank, digit)
+    assert metrics.ssim_zeropad(noisy, digit) < metrics.ssim_zeropad(blank, digit)  # the old flaw
+
+
 def test_pairwise_masks_cancel():
     refs = [torch.zeros(4, 3), torch.zeros(5)]
     masks = defenses.pairwise_masks(refs, num_clients=5, base_seed=1)

@@ -8,3 +8,4 @@ opacus>=1.4          # M4: differential privacy (DP-SGD)
 importlib_metadata   # required by opacus on Python 3.9
 scipy>=1.7           # image matching in the attack on the sum, confidence intervals
 pytest>=7.0          # tests
+scikit-image>=0.19  # tests: check SSIM against the standard implementation

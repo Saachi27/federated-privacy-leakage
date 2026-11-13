@@ -28,11 +28,19 @@ def _gaussian_window(window_size, sigma, channels, device, dtype):
 
 
 def ssim(a, b, window_size=11, sigma=1.5, data_range=1.0):
-    """Structural Similarity Index (mean over the image)."""
+    """Structural Similarity Index, standard form."""
+    return _ssim(a, b, window_size, sigma, data_range, pad=0)
+
+
+def ssim_zeropad(a, b, window_size=11, sigma=1.5, data_range=1.0):
+    """The SSIM used before 13 Nov 2026: zero padding, averaged over the full image."""
+    return _ssim(a, b, window_size, sigma, data_range, pad=window_size // 2)
+
+
+def _ssim(a, b, window_size, sigma, data_range, pad):
     a, b = _to_4d(a).float(), _to_4d(b).float()
     channels = a.shape[1]
     window = _gaussian_window(window_size, sigma, channels, a.device, a.dtype)
-    pad = window_size // 2
 
     mu_a = F.conv2d(a, window, padding=pad, groups=channels)
     mu_b = F.conv2d(b, window, padding=pad, groups=channels)
@@ -50,11 +58,12 @@ def ssim(a, b, window_size=11, sigma=1.5, data_range=1.0):
 
 
 def all_metrics(reconstructed, original, data_range=1.0):
-    """Return {'mse', 'psnr', 'ssim'} comparing a reconstruction to the truth."""
+    """Return {'mse', 'psnr', 'ssim', 'ssim_zeropad'} comparing a reconstruction to the truth."""
     recon = reconstructed.detach().clamp(0, data_range)
     orig = original.detach().clamp(0, data_range)
     return {
         "mse": mse(recon, orig),
         "psnr": psnr(recon, orig, data_range),
         "ssim": ssim(recon, orig, data_range=data_range),
+        "ssim_zeropad": ssim_zeropad(recon, orig, data_range=data_range),
     }
