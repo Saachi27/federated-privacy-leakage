@@ -1,0 +1,54 @@
+=== Federated config ===
+{
+  "dataset": "mnist",
+  "data_root": "./data",
+  "download": true,
+  "num_clients": 10,
+  "client_fraction": 1.0,
+  "rounds": 20,
+  "local_epochs": 1,
+  "batch_size": 64,
+  "lr": 0.01,
+  "momentum": 0.9,
+  "seed": 0,
+  "device": "cpu",
+  "eval_batch_size": 256,
+  "limit_train": null,
+  "normalize": true,
+  "partition": "iid",
+  "dirichlet_alpha": 0.5,
+  "dp": {
+    "noise_multiplier": 1.0,
+    "max_grad_norm": 2.0
+  },
+  "masking": null
+}
+[setup] device=cpu | dataset=mnist | clients=10 fraction=1.0
+[setup] differential privacy ON (noise=1.0, clip=2.0)
+W1112 20:12:15.563941 81998 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+[round   1/20] train_loss=1.6642 test_loss=1.0120 test_acc=0.6943
+[round   2/20] train_loss=0.7654 test_loss=0.6030 test_acc=0.8126
+[round   3/20] train_loss=0.6191 test_loss=0.5358 test_acc=0.8500
+[round   4/20] train_loss=0.5747 test_loss=0.5171 test_acc=0.8661
+[round   5/20] train_loss=0.5465 test_loss=0.4914 test_acc=0.8802
+[round   6/20] train_loss=0.5452 test_loss=0.4864 test_acc=0.8871
+[round   7/20] train_loss=0.5179 test_loss=0.4966 test_acc=0.8877
+[round   8/20] train_loss=0.5187 test_loss=0.4629 test_acc=0.9000
+[round   9/20] train_loss=0.5158 test_loss=0.4710 test_acc=0.9041
+[round  10/20] train_loss=0.5079 test_loss=0.4625 test_acc=0.9045
+[round  11/20] train_loss=0.4980 test_loss=0.4597 test_acc=0.9075
+[round  12/20] train_loss=0.4965 test_loss=0.4432 test_acc=0.9139
+[round  13/20] train_loss=0.4660 test_loss=0.4577 test_acc=0.9115
+[round  14/20] train_loss=0.4863 test_loss=0.4306 test_acc=0.9184
+[round  15/20] train_loss=0.4815 test_loss=0.4445 test_acc=0.9165
+[round  16/20] train_loss=0.4833 test_loss=0.4500 test_acc=0.9206
+[round  17/20] train_loss=0.4784 test_loss=0.4427 test_acc=0.9219
+[round  18/20] train_loss=0.4770 test_loss=0.4242 test_acc=0.9247
+[round  19/20] train_loss=0.4716 test_loss=0.4312 test_acc=0.9246
+[round  20/20] train_loss=0.4779 test_loss=0.4290 test_acc=0.9235
+[privacy] DP budget per client: epsilon=2.973, delta=1e-05  (sigma=1.0, steps=1880)
+
+Saved history -> results/checks/dp_sigma1_clip2_s0.json
+Final test accuracy: 0.9235
+Best test accuracy : 0.9247 (round 18)
+Privacy budget   : (epsilon=2.973, delta=1e-05) per client
