@@ -104,6 +104,7 @@ study() {
   done
   step "$STUDY/compare.log" "$PY" scripts/compare_settings.py
   step results/plot_final.log "$PY" scripts/plot_final.py
+  cp "$STUDY"/mnist-fresh/fig_rq4_*.png results/  # the report's copies are the mnist-fresh ones
   step results/plot_dp.log "$PY" scripts/plot_dp.py
   step results/examples.log "$PY" scripts/make_examples_final.py --workers "$JOBS"
 }

@@ -1,0 +1,78 @@
+{
+  "kappa_hat": 0.0,
+  "dataset": "cifar10",
+  "threshold": 0.9,
+  "per_class": {
+    "0": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10012099213551119
+    },
+    "1": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10032264569469651
+    },
+    "2": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10022181891510386
+    },
+    "3": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.09991933857632587
+    },
+    "4": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10022181891510386
+    },
+    "5": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10012099213551119
+    },
+    "6": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.09951603145795523
+    },
+    "7": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10002016535591854
+    },
+    "8": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.09971768501714055
+    },
+    "9": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.0998185117967332
+    }
+  },
+  "prior": "label-aware: per class, best of the class average and 50 same-class training images, scored with standard SSIM on up to 200 same-class test images (index 82 and up); kappa = class-frequency-weighted average"
+}

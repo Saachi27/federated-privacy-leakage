@@ -1,0 +1,77 @@
+W1113 14:01:30.359866 81254 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+per-example gradient norm: median 26, max 29.9 -> clip C = 32.9
+W1113 14:01:44.492045 81339 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 14:01:44.546077 81337 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 14:01:44.678961 81338 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 14:01:44.722315 81334 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 14:01:44.736639 81335 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1113 14:01:44.943525 81336 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+1/64 done
+2/64 done
+3/64 done
+4/64 done
+5/64 done
+6/64 done
+7/64 done
+8/64 done
+9/64 done
+10/64 done
+11/64 done
+12/64 done
+13/64 done
+14/64 done
+15/64 done
+16/64 done
+17/64 done
+18/64 done
+19/64 done
+20/64 done
+21/64 done
+22/64 done
+23/64 done
+24/64 done
+25/64 done
+26/64 done
+27/64 done
+28/64 done
+29/64 done
+30/64 done
+31/64 done
+32/64 done
+33/64 done
+34/64 done
+35/64 done
+36/64 done
+37/64 done
+38/64 done
+39/64 done
+40/64 done
+41/64 done
+42/64 done
+43/64 done
+44/64 done
+45/64 done
+46/64 done
+47/64 done
+48/64 done
+49/64 done
+50/64 done
+51/64 done
+52/64 done
+53/64 done
+54/64 done
+55/64 done
+56/64 done
+57/64 done
+58/64 done
+59/64 done
+60/64 done
+61/64 done
+62/64 done
+63/64 done
+64/64 done
+TV 0.0001: σ=0.0: 0.754  σ=0.001: 0.495  mean 0.624
+TV 0.001: σ=0.0: 0.764  σ=0.001: 0.617  mean 0.690  <- best
+TV 0.003: σ=0.0: 0.665  σ=0.001: 0.623  mean 0.644
+TV 0.01: σ=0.0: 0.443  σ=0.001: 0.428  mean 0.436
+Saved -> results/study/mnist-fresh/tuning.json: clip 32.9, cosine TV 0.001

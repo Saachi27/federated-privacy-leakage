@@ -1,0 +1,78 @@
+{
+  "kappa_hat": 0.003399878931871271,
+  "dataset": "mnist",
+  "threshold": 0.9,
+  "per_class": {
+    "0": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.09800362976406533
+    },
+    "1": {
+      "kappa": 0.029999999329447746,
+      "best_is_class_average": false,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.11332930026214963
+    },
+    "2": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10334744908247631
+    },
+    "3": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10102843315184513
+    },
+    "4": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.09780197620488001
+    },
+    "5": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.08923169993950393
+    },
+    "6": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.09588626739261948
+    },
+    "7": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10244000806614237
+    },
+    "8": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.098104456543658
+    },
+    "9": {
+      "kappa": 0.0,
+      "best_is_class_average": null,
+      "targets": 200,
+      "guesses": 51,
+      "weight": 0.10082677959265982
+    }
+  },
+  "prior": "label-aware: per class, best of the class average and 50 same-class training images, scored with standard SSIM on up to 200 same-class test images (index 82 and up); kappa = class-frequency-weighted average"
+}

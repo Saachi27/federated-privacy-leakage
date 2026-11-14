@@ -1,0 +1,67 @@
+W1114 04:10:31.613274 2590 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:10:38.496282 2792 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:10:38.496389 2784 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:10:38.497037 2781 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:10:38.497262 2796 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:10:38.497881 2782 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:10:38.500909 2787 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:10:38.518840 2783 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:10:38.537565 2780 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+seed 0: 1/12 done (K=8 basic, 123s)
+seed 0: 2/12 done (K=8 basic, 161s)
+seed 0: 3/12 done (K=8 basic, 166s)
+seed 0: 4/12 done (K=8 basic, 197s)
+seed 0: 5/12 done (K=8 cosine, 268s)
+seed 0: 6/12 done (K=8 cosine, 268s)
+seed 0: 7/12 done (K=8 cosine, 269s)
+seed 0: 8/12 done (K=8 cosine, 269s)
+seed 0: 9/12 done (K=16 basic, 252s)
+seed 0: 10/12 done (K=16 basic, 312s)
+seed 0: 11/12 done (K=16 cosine, 332s)
+seed 0: 12/12 done (K=16 cosine, 310s)
+W1114 04:19:13.039156 10917 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:19:13.039498 10916 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:19:13.038815 10915 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:19:13.041401 10912 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:19:13.043397 10910 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:19:13.044502 10914 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:19:13.049592 10913 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:19:13.071369 10911 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+seed 1: 1/12 done (K=8 basic, 124s)
+seed 1: 2/12 done (K=8 basic, 125s)
+seed 1: 3/12 done (K=8 basic, 129s)
+seed 1: 4/12 done (K=8 basic, 161s)
+seed 1: 5/12 done (K=8 cosine, 268s)
+seed 1: 6/12 done (K=8 cosine, 269s)
+seed 1: 7/12 done (K=8 cosine, 269s)
+seed 1: 8/12 done (K=8 cosine, 269s)
+seed 1: 9/12 done (K=16 basic, 241s)
+seed 1: 10/12 done (K=16 basic, 238s)
+seed 1: 11/12 done (K=16 cosine, 297s)
+seed 1: 12/12 done (K=16 cosine, 272s)
+W1114 04:26:31.430904 14289 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:26:31.453196 14284 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:26:31.473232 14283 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:26:31.475524 14288 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:26:31.475583 14290 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:26:31.529393 14287 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:26:31.551538 14286 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1114 04:26:31.568378 14285 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+seed 2: 1/12 done (K=8 basic, 132s)
+seed 2: 2/12 done (K=8 basic, 133s)
+seed 2: 3/12 done (K=8 basic, 156s)
+seed 2: 4/12 done (K=8 basic, 187s)
+seed 2: 5/12 done (K=8 cosine, 208s)
+seed 2: 6/12 done (K=8 cosine, 208s)
+seed 2: 7/12 done (K=8 cosine, 208s)
+seed 2: 8/12 done (K=8 cosine, 213s)
+seed 2: 9/12 done (K=16 basic, 254s)
+seed 2: 10/12 done (K=16 cosine, 274s)
+seed 2: 11/12 done (K=16 basic, 256s)
+seed 2: 12/12 done (K=16 cosine, 242s)
+| K | Attacker | Sums | Images | Mean SSIM (95% CI over seeds) | Success (SSIM≥0.9) | Best image per sum |
+|---|---|---|---|---|---|---|
+| 8 | basic | 12 | 96 | 0.792 ± 0.060 | 42% | 0.971 |
+| 8 | cosine | 12 | 96 | 0.647 ± 0.106 | 17% | 0.915 |
+| 16 | basic | 6 | 96 | 0.278 ± 0.155 | 0% | 0.562 |
+| 16 | cosine | 6 | 96 | 0.443 ± 0.160 | 1% | 0.819 |
