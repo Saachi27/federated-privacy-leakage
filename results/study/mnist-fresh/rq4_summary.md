@@ -1,0 +1,154 @@
+# Noise on the Sum and What Mixing Protects: MNIST, fresh LeNet, one FedSGD step
+
+**Setting:** MNIST, fresh LeNet, one FedSGD step. Test images 50-81, seeds [0, 1, 2]. Gaussian noise σ·C is added once to the sum of K clipped per-example gradients (clip C = 32.9). Cosine attacker TV weight 0.001 (tuned on held-out sums, `tuning.json`). Attackers are given the true labels; images are scored against their best-matched original. SSIM is the standard form. The leak line is the **label-aware baseline** at the same K: the better of the class-average image and same-class real images, best-matched.
+
+Every ± is a 95% t-interval over seeds of a difference **paired by seed** (the same seed fixes the model, the grouping of the images and the noise draw). Baselines have more seeds than the attacks; pairs use the shared seeds.
+
+## 1. Leak Above the Label-Aware Baseline
+
+Mean SSIM minus the baseline at the same K, paired by seed. **Bold** = clear leak (the whole interval is above 0). *Italic* = stopped (the whole interval is at or below 0). K = 16 was run without noise only.
+
+**Basic (iDLG, L-BFGS)**
+
+| K | σ=0 | σ=1e-4 | σ=3e-4 | σ=0.001 | σ=0.003 | σ=0.01 | σ=0.03 | σ=0.1 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | **+0.729 ± 0.020** | **+0.591 ± 0.125** | **+0.452 ± 0.111** | **+0.216 ± 0.097** | *-0.166 ± 0.019* | *-0.212 ± 0.004* | *-0.244 ± 0.013* | *-0.260 ± 0.008* |
+| 2 | **+0.699 ± 0.136** | **+0.526 ± 0.108** | **+0.356 ± 0.076** | +0.007 ± 0.191 | *-0.174 ± 0.007* | *-0.218 ± 0.008* | *-0.235 ± 0.012* | *-0.246 ± 0.008* |
+| 4 | **+0.669 ± 0.143** | **+0.414 ± 0.083** | +0.171 ± 0.173 | *-0.133 ± 0.050* | *-0.192 ± 0.006* | *-0.211 ± 0.008* | *-0.224 ± 0.008* | *-0.232 ± 0.007* |
+| 8 | **+0.488 ± 0.142** | +0.163 ± 0.191 | -0.102 ± 0.153 | *-0.203 ± 0.089* | *-0.226 ± 0.073* | *-0.234 ± 0.074* | *-0.248 ± 0.067* | *-0.251 ± 0.078* |
+| 16 | -0.064 ± 0.122 | — | — | — | — | — | — | — |
+
+**Cosine (Geiping et al.)**
+
+| K | σ=0 | σ=1e-4 | σ=3e-4 | σ=0.001 | σ=0.003 | σ=0.01 | σ=0.03 | σ=0.1 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | **+0.719 ± 0.034** | **+0.666 ± 0.134** | **+0.605 ± 0.103** | **+0.398 ± 0.072** | **+0.102 ± 0.097** | *-0.143 ± 0.047* | *-0.227 ± 0.021* | *-0.253 ± 0.020* |
+| 2 | **+0.591 ± 0.153** | **+0.594 ± 0.118** | **+0.562 ± 0.113** | **+0.403 ± 0.073** | +0.085 ± 0.105 | *-0.158 ± 0.057* | *-0.226 ± 0.026* | *-0.244 ± 0.020* |
+| 4 | **+0.462 ± 0.143** | **+0.458 ± 0.125** | **+0.448 ± 0.130** | **+0.361 ± 0.077** | **+0.076 ± 0.058** | *-0.163 ± 0.028* | *-0.218 ± 0.009* | *-0.235 ± 0.009* |
+| 8 | **+0.265 ± 0.040** | **+0.256 ± 0.061** | **+0.266 ± 0.084** | **+0.214 ± 0.028** | **+0.050 ± 0.027** | *-0.192 ± 0.055* | *-0.240 ± 0.074* | *-0.249 ± 0.078* |
+| 16 | +0.036 ± 0.048 | — | — | — | — | — | — | — |
+
+**Without noise, the same test with PSNR as a cross-check** (attack minus label-aware PSNR baseline, dB, capped at 60):
+
+| Attacker | K=1 | K=2 | K=4 | K=8 | K=16 |
+|---|---|---|---|---|---|
+| basic | **+45.6 ± 5.2** | **+40.4 ± 6.6** | **+28.6 ± 5.6** | **+11.2 ± 4.0** | *-5.0 ± 2.0* |
+| cosine | **+23.5 ± 9.5** | **+14.9 ± 7.3** | **+8.4 ± 4.2** | **+3.1 ± 1.1** | -0.1 ± 1.5 |
+
+### Did the attack just run out of steps? (4× attack steps, no noise)
+
+| Attacker | K | Normal: SSIM − baseline | 4× steps: SSIM − baseline | 4× minus normal |
+|---|---|---|---|---|
+| basic | 8 | +0.488 ± 0.142 | +0.496 ± 0.118 | +0.008 ± 0.043 |
+| cosine | 8 | +0.265 ± 0.040 | +0.351 ± 0.114 | +0.086 ± 0.141 |
+| basic | 16 | -0.064 ± 0.122 | -0.055 ± 0.135 | +0.009 ± 0.013 |
+| cosine | 16 | +0.036 ± 0.048 | +0.109 ± 0.113 | +0.073 ± 0.156 |
+
+## 2. Stopping Noise σ*(K)
+
+The lowest tested σ from which the attack is stopped at that σ and at every larger tested σ. "Not stopped" means no tested σ stops it. Three rules:
+- **SSIM rule (main):** the paired 95% interval of attack minus label-aware baseline is at or below 0.
+- **PSNR rule (cross-check):** the same test with PSNR (capped at 60 dB) against the label-aware PSNR baseline.
+- **Success rule:** at most 1% of images reach SSIM ≥ 0.9. The 0.9 line misses noisy but readable images, so this rule stops too early; it is shown for comparison only.
+
+| Attacker | K | Baseline SSIM | σ* (SSIM) | ε at σ* | σ* (PSNR) | ε at σ* | σ* (success) | ε at σ* |
+|---|---|---|---|---|---|---|---|---|
+| basic | 1 | 0.266 | 0.003 | 6.12e+04 | 0.003 | 6.12e+04 | 0.001 | 5.5e+05 |
+| basic | 2 | 0.266 | 0.003 | 6.12e+04 | 0.001 | 5.5e+05 | 0.001 | 5.5e+05 |
+| basic | 4 | 0.273 | 0.001 | 5.5e+05 | 0.001 | 5.5e+05 | 3e-4 | 6.11e+06 |
+| basic | 8 | 0.302 | 0.001 | 5.5e+05 | 3e-4 | 6.11e+06 | 1e-4 | 5.5e+07 |
+| cosine | 1 | 0.266 | 0.01 | 5.61e+03 | 0.003 | 6.12e+04 | 0.003 | 6.12e+04 |
+| cosine | 2 | 0.266 | 0.01 | 5.61e+03 | 0.003 | 6.12e+04 | 0.003 | 6.12e+04 |
+| cosine | 4 | 0.273 | 0.01 | 5.61e+03 | 0.003 | 6.12e+04 | 0.003 | 6.12e+04 |
+| cosine | 8 | 0.302 | 0.01 | 5.61e+03 | 0.003 | 6.12e+04 | 0.001 | 5.5e+05 |
+
+ε is for one Gaussian release (δ = 1e-5, sampling rate 1, one step, add/remove-one sensitivity C). It is not the DP-SGD training ε.
+
+## 3. The Sum vs an Attacker Who Knows the Other Examples
+
+- **Sum:** the attack on the noisy sum of K examples.
+- **Informed:** an attacker who already knows the other K−1 examples. It subtracts their gradients and is left with one example plus noise of the same size. For a single step this is **equal in distribution** to the K = 1 attack at the same σ (same noise size, not the same noise draw), so the K = 1 results stand in for it.
+
+**What to expect before looking.** The informed attacker has at least as much information as the attacker who sees only the sum: it can always compute the sum itself. So for an optimal attacker the net effect (Sum − Informed) cannot be positive. A negative net is therefore not a discovery; the useful result is **how large the gap is** for these two practical attackers, and at which noise levels it closes.
+
+| Attacker | K | σ | Sum | Informed (K=1) | Net (Sum − Informed) |
+|---|---|---|---|---|---|
+| basic | 2 | 0 | 0.965 ± 0.136 | 0.995 ± 0.020 | -0.030 ± 0.117 |
+| basic | 2 | 1e-4 | 0.793 ± 0.108 | 0.858 ± 0.125 | **-0.065 ± 0.022** |
+| basic | 2 | 3e-4 | 0.622 ± 0.076 | 0.719 ± 0.111 | **-0.096 ± 0.051** |
+| basic | 2 | 0.001 | 0.273 ± 0.191 | 0.483 ± 0.097 | **-0.210 ± 0.102** |
+| basic | 2 | 0.003 | 0.093 ± 0.007 | 0.101 ± 0.019 | -0.008 ± 0.017 |
+| basic | 2 | 0.01 | 0.048 ± 0.008 | 0.054 ± 0.004 | -0.006 ± 0.008 |
+| basic | 2 | 0.03 | 0.031 ± 0.012 | 0.023 ± 0.013 | **+0.009 ± 0.001** |
+| basic | 2 | 0.1 | 0.020 ± 0.008 | 0.006 ± 0.008 | **+0.014 ± 0.010** |
+| basic | 4 | 0 | 0.936 ± 0.143 | 0.995 ± 0.020 | -0.060 ± 0.123 |
+| basic | 4 | 1e-4 | 0.681 ± 0.083 | 0.858 ± 0.125 | **-0.177 ± 0.076** |
+| basic | 4 | 3e-4 | 0.438 ± 0.173 | 0.719 ± 0.111 | **-0.281 ± 0.129** |
+| basic | 4 | 0.001 | 0.134 ± 0.050 | 0.483 ± 0.097 | **-0.349 ± 0.064** |
+| basic | 4 | 0.003 | 0.074 ± 0.006 | 0.101 ± 0.019 | **-0.027 ± 0.013** |
+| basic | 4 | 0.01 | 0.056 ± 0.008 | 0.054 ± 0.004 | +0.001 ± 0.006 |
+| basic | 4 | 0.03 | 0.042 ± 0.008 | 0.023 ± 0.013 | **+0.020 ± 0.008** |
+| basic | 4 | 0.1 | 0.034 ± 0.007 | 0.006 ± 0.008 | **+0.028 ± 0.006** |
+| basic | 8 | 0 | 0.784 ± 0.072 | 0.995 ± 0.020 | **-0.212 ± 0.068** |
+| basic | 8 | 1e-4 | 0.459 ± 0.155 | 0.858 ± 0.125 | **-0.399 ± 0.094** |
+| basic | 8 | 3e-4 | 0.194 ± 0.120 | 0.719 ± 0.111 | **-0.524 ± 0.150** |
+| basic | 8 | 0.001 | 0.093 ± 0.038 | 0.483 ± 0.097 | **-0.390 ± 0.082** |
+| basic | 8 | 0.003 | 0.070 ± 0.006 | 0.101 ± 0.019 | **-0.031 ± 0.019** |
+| basic | 8 | 0.01 | 0.062 ± 0.004 | 0.054 ± 0.004 | +0.008 ± 0.008 |
+| basic | 8 | 0.03 | 0.048 ± 0.005 | 0.023 ± 0.013 | **+0.025 ± 0.016** |
+| basic | 8 | 0.1 | 0.045 ± 0.008 | 0.006 ± 0.008 | **+0.039 ± 0.017** |
+| cosine | 2 | 0 | 0.858 ± 0.153 | 0.985 ± 0.034 | **-0.128 ± 0.120** |
+| cosine | 2 | 1e-4 | 0.860 ± 0.118 | 0.933 ± 0.134 | -0.073 ± 0.116 |
+| cosine | 2 | 3e-4 | 0.829 ± 0.113 | 0.871 ± 0.103 | -0.043 ± 0.095 |
+| cosine | 2 | 0.001 | 0.669 ± 0.073 | 0.664 ± 0.072 | **+0.005 ± 0.001** |
+| cosine | 2 | 0.003 | 0.351 ± 0.105 | 0.368 ± 0.097 | **-0.017 ± 0.014** |
+| cosine | 2 | 0.01 | 0.108 ± 0.057 | 0.124 ± 0.047 | **-0.015 ± 0.012** |
+| cosine | 2 | 0.03 | 0.040 ± 0.026 | 0.040 ± 0.021 | +0.001 ± 0.007 |
+| cosine | 2 | 0.1 | 0.023 ± 0.020 | 0.014 ± 0.020 | **+0.009 ± 0.007** |
+| cosine | 4 | 0 | 0.729 ± 0.143 | 0.985 ± 0.034 | **-0.257 ± 0.111** |
+| cosine | 4 | 1e-4 | 0.725 ± 0.125 | 0.933 ± 0.134 | **-0.208 ± 0.185** |
+| cosine | 4 | 3e-4 | 0.715 ± 0.130 | 0.871 ± 0.103 | -0.157 ± 0.163 |
+| cosine | 4 | 0.001 | 0.628 ± 0.077 | 0.664 ± 0.072 | -0.036 ± 0.059 |
+| cosine | 4 | 0.003 | 0.342 ± 0.058 | 0.368 ± 0.097 | -0.026 ± 0.051 |
+| cosine | 4 | 0.01 | 0.104 ± 0.028 | 0.124 ± 0.047 | -0.020 ± 0.022 |
+| cosine | 4 | 0.03 | 0.049 ± 0.009 | 0.040 ± 0.021 | +0.009 ± 0.012 |
+| cosine | 4 | 0.1 | 0.032 ± 0.009 | 0.014 ± 0.020 | +0.018 ± 0.022 |
+| cosine | 8 | 0 | 0.561 ± 0.063 | 0.985 ± 0.034 | **-0.424 ± 0.037** |
+| cosine | 8 | 1e-4 | 0.552 ± 0.095 | 0.933 ± 0.134 | **-0.381 ± 0.195** |
+| cosine | 8 | 3e-4 | 0.562 ± 0.078 | 0.871 ± 0.103 | **-0.309 ± 0.166** |
+| cosine | 8 | 0.001 | 0.510 ± 0.049 | 0.664 ± 0.072 | **-0.154 ± 0.049** |
+| cosine | 8 | 0.003 | 0.346 ± 0.045 | 0.368 ± 0.097 | -0.022 ± 0.067 |
+| cosine | 8 | 0.01 | 0.105 ± 0.043 | 0.124 ± 0.047 | **-0.019 ± 0.011** |
+| cosine | 8 | 0.03 | 0.056 ± 0.005 | 0.040 ± 0.021 | +0.016 ± 0.018 |
+| cosine | 8 | 0.1 | 0.047 ± 0.012 | 0.014 ± 0.020 | **+0.034 ± 0.011** |
+
+**Bold** net = its 95% interval excludes 0. Where the interval includes 0 the data cannot tell the sum and the informed attacker apart; that is not evidence that they are equal.
+
+## 4. Measured Success vs an Indicative Reconstruction Bound
+
+Reconstruction-robustness (ReRo) bound for one release of the Gaussian mechanism, in the closed form of Kaissis et al. 2023 (arXiv:2307.03928), which agrees with Hayes et al. 2023 (arXiv:2302.07225, Corollary 4) at sampling rate 1 and one step:
+
+  success ≤ Φ(Φ⁻¹(κ) + 1/σ) = 1 − Φ(Φ⁻¹(1 − κ) − 1/σ)
+
+**This bound is indicative, not certified.**
+- κ is the best success an attacker can reach **without** the gradient. The attackers know the labels, so κ is label-aware: for each class, the best single fixed guess among the class average and 50 same-class training images, scored on same-class mnist test images at standard SSIM ≥ 0.9, then weighted by class frequency. κ̂ = 0.0034.
+- κ̂ is a **lower estimate** of the true κ: it searches finitely many candidate guesses, and a better guess may exist. A larger κ gives a larger (weaker) bound, so the true bound may be weaker than shown. The sampling error of κ̂ is not bounded either.
+- The bound is about any attacker, including the informed one, so it covers every K. Our two attackers are far from optimal, so measured success below the bound is expected.
+
+| σ | ε (one release) | Indicative bound | Basic, K=1 | Cosine, K=1 | Highest over K and attackers |
+|---|---|---|---|---|---|
+| 0 | ∞ | 100.0% | 97% | 96% | 97% |
+| 1e-4 | 5.5e+07 | 100.0% | 58% | 88% | 88% |
+| 3e-4 | 6.11e+06 | 100.0% | 17% | 71% | 71% |
+| 0.001 | 5.5e+05 | 100.0% | 0% | 4% | 4% |
+| 0.003 | 6.12e+04 | 100.0% | 0% | 0% | 0% |
+| 0.01 | 5.61e+03 | 100.0% | 0% | 0% | 0% |
+| 0.03 | 722 | 100.0% | 0% | 0% | 0% |
+| 0.1 | 96.1 | 100.0% | 0% | 0% | 0% |
+| 0.3 | 20.4 | 73.5% | — | — | not tested |
+| 1 | 4.73 | 4.4% | — | — | not tested |
+| 2 | 2.17 | 1.4% | — | — | not tested |
+
+The indicative bound first drops below 99% at σ = 0.3 (ε = 20.4).
+By the SSIM rule, both attacks are stopped at every K from σ = 0.01 (ε = 5.61e+03).
+

@@ -1,0 +1,129 @@
+skip results/models/mnist_lenet_r20_s0.pt
+skip results/models/mnist_lenet_r20_s1.pt
+skip results/models/mnist_lenet_r20_s2.pt
+skip results/study/mnist-fresh/tuning.json
+start results/study/mnist-trained/tuning.log
+done results/study/mnist-trained/tuning.log
+skip results/study/cifar10-fresh/tuning.json
+skip results/study/mnist-fedavg/tuning.json
+skip results/study/baselines_mnist.json
+skip results/study/baselines_cifar10.json
+start results/study/mnist-fresh/noise.out
+done results/study/mnist-fresh/noise.out
+start results/study/mnist-trained/noise.out
+done results/study/mnist-trained/noise.out
+start results/study/cifar10-fresh/noise.out
+done results/study/cifar10-fresh/noise.out
+start results/study/mnist-fedavg/noise.out
+done results/study/mnist-fedavg/noise.out
+start results/study/mnist-fresh/sum16.out
+done results/study/mnist-fresh/sum16.out
+start results/study/mnist-trained/sum16.out
+done results/study/mnist-trained/sum16.out
+start results/study/cifar10-fresh/sum16.out
+done results/study/cifar10-fresh/sum16.out
+start results/study/mnist-fedavg/sum16.out
+done results/study/mnist-fedavg/sum16.out
+start results/study/mnist-fresh/sum_long.out
+done results/study/mnist-fresh/sum_long.out
+skip results/checks/dp_noclip_nonoise_s1.json
+skip results/checks/dp_noclip_nonoise_s2.json
+skip results/checks/dp_noclip_nonoise_s0.json
+skip results/checks/dp_clip1_nonoise_s0.json
+skip results/checks/dp_clip1_nonoise_s1.json
+skip results/checks/dp_clip1_nonoise_s2.json
+skip results/checks/dp_sigma1_lr0.03_s1.json
+skip results/checks/dp_sigma1_lr0.03_s0.json
+skip results/checks/dp_sigma1_lr0.03_s2.json
+skip results/checks/dp_sigma1_lr0.1_s0.json
+skip results/checks/dp_sigma1_lr0.1_s1.json
+skip results/checks/dp_sigma1_lr0.1_s2.json
+skip results/checks/dp_sigma1_clip2_s1.json
+skip results/checks/dp_sigma1_clip2_s2.json
+skip results/checks/dp_sigma1_clip2_s0.json
+skip results/checks/dp_sigma1_clip5_s0.json
+skip results/checks/dp_sigma1_clip5_s1.json
+skip results/checks/dp_sigma1_clip5_s2.json
+start results/study/mnist-fresh/rq4.log
+done results/study/mnist-fresh/rq4.log
+start results/study/mnist-fresh/plot.log
+done results/study/mnist-fresh/plot.log
+start results/study/mnist-trained/rq4.log
+done results/study/mnist-trained/rq4.log
+start results/study/mnist-trained/plot.log
+done results/study/mnist-trained/plot.log
+start results/study/cifar10-fresh/rq4.log
+done results/study/cifar10-fresh/rq4.log
+start results/study/cifar10-fresh/plot.log
+done results/study/cifar10-fresh/plot.log
+start results/study/mnist-fedavg/rq4.log
+done results/study/mnist-fedavg/rq4.log
+start results/study/mnist-fedavg/plot.log
+done results/study/mnist-fedavg/plot.log
+start results/study/compare.log
+done results/study/compare.log
+start results/plot_final.log
+done results/plot_final.log
+start results/plot_dp.log
+done results/plot_dp.log
+start results/examples.log
+done results/examples.log
+skip results/runs/train_mnist_baseline_s2.json
+skip results/runs/train_mnist_baseline_s0.json
+skip results/runs/train_mnist_baseline_s1.json
+skip results/runs/train_mnist_mask_s0.json
+skip results/runs/train_mnist_mask_s2.json
+skip results/runs/train_mnist_mask_s1.json
+skip results/runs/train_mnist_dp1_s1.json
+skip results/runs/train_mnist_dp1_s0.json
+skip results/runs/train_mnist_dp1_s2.json
+start results/runs/attack_lenet_s0.json
+start results/runs/attack_lenet_s1.json
+start results/runs/attack_lenet_s2.json
+start results/runs/attack_smallcnn_s0.json
+start results/runs/attack_smallcnn_s1.json
+start results/runs/attack_smallcnn_s2.json
+done results/runs/attack_lenet_s0.json
+done results/runs/attack_lenet_s1.json
+done results/runs/attack_lenet_s2.json
+done results/runs/attack_smallcnn_s2.json
+done results/runs/attack_smallcnn_s0.json
+done results/runs/attack_smallcnn_s1.json
+start results/evaluation.md
+done results/evaluation.md
+start results/evaluation_sweep.md
+done results/evaluation_sweep.md
+Saved -> results/reconstruction_gallery.png
+Target: mnist index=1 true label=2 | attacker=adaptive iters=300
+
+[none] reconstructing...
+[dp] reconstructing...
+[mask] reconstructing...
+
+=== M5 results: reconstruction quality (lower SSIM/PSNR = better privacy) ===
+defense     SSIM↓    PSNR↓       MSE↑    grad-loss  label
+none        1.000    73.94     0.0000     5.78e-08      2
+dp          0.049     3.17     0.4815     1.67e+04      2
+mask        0.022     3.01     0.4995     6.65e+04      2
+
+Saved metrics -> results/privacy_eval.json
+Saved figure  -> results/privacy_eval.png
+skip results/runs/train_mnist_dp0.5_s2.json
+skip results/runs/train_mnist_dp0.5_s0.json
+skip results/runs/train_mnist_dp0.5_s1.json
+skip results/runs/train_mnist_dp2_s1.json
+skip results/runs/train_mnist_dp2_s0.json
+skip results/runs/train_mnist_dp2_s2.json
+skip results/runs/train_mnist_alpha0.5_s0.json
+skip results/runs/train_mnist_alpha0.5_s1.json
+skip results/runs/train_mnist_alpha0.5_s2.json
+skip results/runs/train_mnist_alpha0.1_s0.json
+skip results/runs/train_mnist_alpha0.1_s1.json
+skip results/runs/train_mnist_alpha0.1_s2.json
+skip results/runs/train_cifar10_baseline_s0.json
+skip results/runs/train_cifar10_baseline_s1.json
+skip results/runs/train_cifar10_baseline_s2.json
+start results/evaluation_cifar10.md
+done results/evaluation_cifar10.md
+Saved -> results/reconstruction_gallery_cifar10.png
+summary -> results/summary.md
