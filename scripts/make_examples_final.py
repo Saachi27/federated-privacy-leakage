@@ -29,7 +29,7 @@ COLUMNS = [
     ("K=2\nσ=1e-3", "sum", 2, 1e-3),
     ("K=2\nσ=1e-2", "sum", 2, 1e-2),
 ]
-ATTACKER_NAMES = {"basic": "Basic (iDLG)", "cosine": "Cosine (Geiping)"}
+ATTACKER_NAMES = {"basic": "Basic (L-BFGS)", "cosine": "Cosine (Geiping)"}
 
 
 def _init_worker():
@@ -81,7 +81,8 @@ def baseline_note(path):
         return ""
     with open(path) as f:
         base = json.load(f)["baselines"]
-    vals = [v["ssim"]["mean"] for name, v in base.items() if name.startswith("label-aware baseline")]
+    vals = [v["ssim"]["mean"] for name, v in base.items()
+            if name.startswith("label-aware baseline") and not name.endswith("K=16")]
     if not vals:
         return ""
     return f"; no-information baseline, knowing labels ≈ {min(vals):.2f}–{max(vals):.2f}"
@@ -97,7 +98,8 @@ def main():
     p.add_argument("--clip", type=float, default=30.0)
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--out", default="results/fig_examples_final.png")
-    p.add_argument("--baselines", default="results/baselines_noise.json")
+    p.add_argument("--baselines", default="results/study/baselines_mnist.json")
+    p.add_argument("--no-title", action="store_true", help="leave out the in-image title")
     args = p.parse_args()
 
     images, meta = load_images("mnist", args.first_image + args.num_images)
@@ -126,8 +128,9 @@ def main():
                                       fontweight="bold" if s >= 0.9 else "normal")
             if r == 0:
                 axes[r][c + 1].set_title(COLUMNS[c][0], fontsize=9)
-    fig.suptitle("What the attacker recovers (MNIST, fresh LeNet; number = SSIM, bold = success ≥ 0.9"
-                 f"{baseline_note(args.baselines)})", fontsize=10)
+    if not args.no_title:
+        fig.suptitle("What the attacker recovers (MNIST, fresh LeNet; number = SSIM, bold = success ≥ 0.9"
+                     f"{baseline_note(args.baselines)})", fontsize=10)
     fig.tight_layout()
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     fig.savefig(args.out)
