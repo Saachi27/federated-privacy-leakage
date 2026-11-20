@@ -26,22 +26,49 @@ def extract_label(observed_grads):
 
 def reconstruct(model, observed_grads, input_shape, num_classes,
                 mode="idlg", label=None, iters=300, lr=1.0, seed=0,
-                device=None, log_every=0, log=print, clip=None):
+                device=None, log_every=0, log=print, clip=None, restarts=1):
     """Reconstruct the input from an observed gradient."""
+    if restarts < 1:
+        raise ValueError(f"restarts must be >= 1, got {restarts}")
+    if mode not in ("idlg", "dlg"):
+        raise ValueError(f"Unknown mode: {mode}")
     device = device or next(model.parameters()).device
     gen = torch.Generator(device="cpu").manual_seed(seed)
+    if mode == "idlg":
+        label = extract_label(observed_grads) if label is None else label
+
+    best = None
+    restart_losses = []
+    for r in range(restarts):
+        if restarts > 1 and log_every:
+            log(f"  [attack] restart {r + 1}/{restarts}")
+        x, info = _lbfgs_run(model, observed_grads, input_shape, num_classes, mode, label,
+                             iters, lr, gen, device, log_every, log, clip)
+        restart_losses.append(info["final_loss"])
+        if best is None or _sort_key(info["final_loss"]) < _sort_key(best[1]["final_loss"]):
+            best = (x, info, r)
+    x, info, r = best
+    info["restart_losses"] = restart_losses
+    info["best_restart"] = r
+    return x, info
+
+
+def _sort_key(loss):
+    return float("inf") if loss != loss else loss  # NaN never wins
+
+
+def _lbfgs_run(model, observed_grads, input_shape, num_classes, mode, label,
+               iters, lr, gen, device, log_every, log, clip):
+    """One L-BFGS run from a random start drawn from `gen`."""
     dummy_x = torch.randn(input_shape, generator=gen).to(device).requires_grad_(True)
 
     if mode == "idlg":
-        label = extract_label(observed_grads) if label is None else label
         label_t = torch.as_tensor(label, device=device).view(-1)  # one label per example
         params = [dummy_x]
-    elif mode == "dlg":
+    else:
         # Optimise the label jointly as free logits (soft label via softmax).
         dummy_label = torch.randn((1, num_classes), generator=gen).to(device).requires_grad_(True)
         params = [dummy_x, dummy_label]
-    else:
-        raise ValueError(f"Unknown mode: {mode}")
 
     optimizer = torch.optim.LBFGS(params, lr=lr, max_iter=20)
     history = []

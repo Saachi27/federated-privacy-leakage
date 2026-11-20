@@ -12,10 +12,10 @@ from scipy import stats
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scripts.attack_sum import match_images
-from src import metrics
+from src import metrics, splits
 from src.data import load_datasets
 
-POOL_START = 82  # unrelated images come from here on
+POOL_START = splits.LEGACY.prior.start  # old name; the prior now comes from --splits
 METRICS = ("ssim", "ssim_zeropad", "psnr", "mse")
 
 
@@ -35,23 +35,30 @@ def score(fakes, targets):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--dataset", choices=["mnist", "cifar10"], default="mnist")
-    p.add_argument("--first-image", type=int, default=50)
+    p.add_argument("--splits", choices=list(splits.SPLITS), default="legacy",
+                   help="image ranges from src/splits.py (legacy = old results)")
+    p.add_argument("--first-image", type=int, default=None,
+                   help="first target image (default: start of the split's target range)")
     p.add_argument("--num-images", type=int, default=32)
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
     p.add_argument("--ks", nargs="+", type=int, default=[1, 2, 4, 8, 16])
     p.add_argument("--out", default="results/baselines")
     args = p.parse_args()
     torch.set_num_threads(2)
-    first, num = args.first_image, args.num_images
-    assert first + num <= POOL_START
+    split = splits.get(args.splits)
+    first = split.targets.start if args.first_image is None else args.first_image
+    num = args.num_images
 
     train_ds, test_ds, _ = load_datasets(args.dataset, normalize=False)
+    assert split.is_disjoint(len(test_ds)), split.overlaps(len(test_ds))
+    assert split.targets.contains(first, num, len(test_ds)), \
+        f"targets {first}-{first + num - 1} are outside the {split.name} target range {split.targets}"
     targets = [test_ds[i][0] for i in range(first, first + num)]
     labels = [int(test_ds[i][1]) for i in range(first, first + num)]
     test_labels = np.array([int(y) for y in test_ds.targets])
     train_labels = torch.as_tensor(np.array([int(y) for y in train_ds.targets]))
-    pool_idx = np.arange(POOL_START, len(test_ds))
-    pool_by_class = {c: pool_idx[test_labels[pool_idx] == c] for c in range(10)}
+    pool_idx = split.prior.indices(len(test_ds))
+    pool_by_class = splits.pool_by_class(test_labels, split.prior)
     train = torch.as_tensor(np.asarray(train_ds.data)).float() / 255.0
     train = train.unsqueeze(1) if train.dim() == 3 else train.permute(0, 3, 1, 2)  # (N, C, H, W)
     average = train.mean(0)
@@ -104,7 +111,7 @@ def main():
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out + ".json", "w") as f:
-        json.dump({"dataset": args.dataset, "images": f"{args.dataset} test {first}-{first + num - 1}", "seeds": args.seeds, "ks": args.ks,
+        json.dump({"dataset": args.dataset, "splits": split.name, "images": f"{args.dataset} test {first}-{first + num - 1}", "seeds": args.seeds, "ks": args.ks,
                    "baselines": summary, "per_seed": rows}, f, indent=2)
 
     def fmt(d):

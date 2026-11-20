@@ -144,6 +144,35 @@ def test_dlg_reconstructs_without_defense():
     assert m["ssim"] > 0.95, f"reconstruction failed: SSIM={m['ssim']}"
 
 
+def test_restarts_keep_the_lowest_loss():
+    """Restarts never end above a single run with the same first seed."""
+    model = _toy_model()
+    set_seed(1)
+    x, y = torch.rand(2, 1, 28, 28), [1, 4]
+    observed = attack.compute_gradient(model, x, torch.tensor(y))
+    single, one = attack.reconstruct(model, observed, x.shape, 10, label=y, iters=5, seed=3)
+    multi, many = attack.reconstruct(model, observed, x.shape, 10, label=y, iters=5, seed=3,
+                                     restarts=3)
+    assert one["restart_losses"] == [one["final_loss"]] and one["best_restart"] == 0
+    assert len(many["restart_losses"]) == 3
+    assert many["restart_losses"][0] == one["final_loss"]  # restart 0 is the old single run
+    assert many["final_loss"] == min(many["restart_losses"]) <= one["final_loss"]
+    kept = many["best_restart"]
+    assert many["final_loss"] == many["restart_losses"][kept]
+    if kept == 0:
+        assert torch.equal(multi, single)
+
+
+def test_restarts_reject_zero_and_skip_nan():
+    import pytest
+    model = _toy_model()
+    x, y = torch.rand(1, 1, 28, 28), [2]
+    observed = attack.compute_gradient(model, x, torch.tensor(y))
+    with pytest.raises(ValueError):
+        attack.reconstruct(model, observed, x.shape, 10, label=y, iters=1, restarts=0)
+    assert attack._sort_key(float("nan")) > attack._sort_key(1e30)
+
+
 def test_adaptive_attacker_defeats_clipping_alone():
     """Clipping without noise is no defense once the attacker models the clip."""
     model = _toy_model()
