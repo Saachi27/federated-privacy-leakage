@@ -111,6 +111,16 @@ study() {
     --clip "$(tuned mnist-fresh clip)" --no-title --out results/fig_examples_final_v2.png
 }
 
+multiclient() {
+  # Client-split study.
+  local out=results/multiclient
+  mkdir -p "$out"
+  step "$out/lr_grid.log" "$PY" scripts/attack_multiclient.py --lr-grid --out "$out"
+  step "$out/grid_$(date +%Y%m%d_%H%M%S).log" "$PY" scripts/attack_multiclient.py --cut "${MC_CUT:-0}" \
+    --workers "$JOBS" --out "$out"
+  "$PY" scripts/attack_multiclient.py --summary --out "$out" > "$out/summary.md" && echo "summary -> $out/summary.md"
+}
+
 core() {
   { train mnist_baseline --config configs/mnist.yaml
     train mnist_mask --config configs/mnist.yaml --mask
@@ -142,6 +152,7 @@ case "${1:-all}" in
   core) core ;;
   extras) extras ;;
   all) study; core; extras ;;
-  *) echo "usage: $0 [study|core|extras|all]"; exit 2 ;;
+  multiclient) multiclient; exit 0 ;;
+  *) echo "usage: $0 [study|core|extras|all|multiclient]"; exit 2 ;;
 esac
 "$PY" scripts/summarize_results.py > /dev/null && echo "summary -> results/summary.md"
