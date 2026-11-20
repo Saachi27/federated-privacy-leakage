@@ -43,6 +43,7 @@ def main():
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
     p.add_argument("--ks", nargs="+", type=int, default=[1, 2, 4, 8, 16])
     p.add_argument("--out", default="results/baselines")
+    p.add_argument("--save-guesses", default=None, help="optional .npz for the label-aware guess images")
     args = p.parse_args()
     torch.set_num_threads(2)
     split = splits.get(args.splits)
@@ -65,6 +66,7 @@ def main():
     class_avg = {c: train[train_labels == c].mean(0) for c in range(10)}
 
     rows = {}  # name -> {metric: [per-seed values]}
+    guesses = {"class_average": torch.stack([class_avg[c] for c in range(10)]).numpy()}
 
     def add(name, seed_scores):
         rows[name] = {m: [s[m] for s in seed_scores] for m in METRICS}
@@ -89,8 +91,13 @@ def main():
                 chosen = [targets[i] for i in idx]
                 others = torch.stack([test_ds[int(i)][0] for i in rng.choice(pool_idx, k, replace=False)])
                 u_recs += match_images(others, chosen)
-                same = torch.stack([test_ds[int(rng.choice(pool_by_class[labels[i]]))][0] for i in idx])
+                same_ids = [int(rng.choice(pool_by_class[labels[i]])) for i in idx]
+                same = torch.stack([test_ds[j][0] for j in same_ids])
                 s_recs += match_images(same, chosen)
+                key = f"k{k}_s{seed}_g{group}"
+                guesses[f"same_{key}"] = same.numpy()
+                guesses[f"same_ids_{key}"] = np.array(same_ids)
+                guesses[f"target_ids_{key}"] = np.array([first + i for i in idx])
             unrelated.append({m: float(np.mean([r[m] for r in u_recs])) for m in METRICS})
             same_class.append({m: float(np.mean([r[m] for r in s_recs])) for m in METRICS})
         add(f"unrelated digits, best-matched, K={k}", unrelated)
@@ -130,6 +137,9 @@ def main():
         f.write("\n".join(lines) + "\n")
     print("\n".join(lines))
     print(f"Saved -> {args.out}.json, {args.out}.md")
+    if args.save_guesses:
+        np.savez_compressed(args.save_guesses, **guesses)
+        print(f"Saved guesses -> {args.save_guesses}")
 
 
 if __name__ == "__main__":
