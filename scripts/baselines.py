@@ -44,7 +44,7 @@ def _score_summary(out):
 
 
 def release_baseline(n, r, targets, labels, release_ids, class_avg, prior_by_class, image_of, gallery,
-                     average=None, n_draws=N_DRAWS):
+                     average=None, n_draws=N_DRAWS, average_name="average digit"):
     """Baselines for one release."""
     labels = [int(y) for y in labels]
     ca = rr.score_release(targets, class_avg[labels], labels, release_ids, gallery, recon_classes=labels)
@@ -70,7 +70,7 @@ def release_baseline(n, r, targets, labels, release_ids, class_avg, prior_by_cla
            "baseline_hit": max(float(ca["hit"]), same_hit), "seed": same_class_seed(n, r)}
     context = {"all black": torch.zeros_like(targets)}
     if average is not None:
-        context["average digit"] = average.expand_as(targets)
+        context[average_name] = average.expand_as(targets)
     g = torch.Generator().manual_seed(60000 + 1000 * n + r)
     context["random noise"] = torch.rand(targets.shape, generator=g)
     rec["context_mean_ssim"] = {k: rr.score_release(targets, v, labels)["mean_ssim"] for k, v in context.items()}
@@ -103,14 +103,16 @@ def journal_main(args):
         recs = []
         for r, idx in enumerate(rels):
             rec = release_baseline(n, r, test_images[idx], test_labels[idx].tolist(), idx, class_avg,
-                                   prior_by_class, lambda i: test_images[i], gallery, train.mean(0))
+                                   prior_by_class, lambda i: test_images[i], gallery, train.mean(0),
+                                   average_name="average digit" if args.dataset == "mnist" else "average image")
             assert all(i in set(prior) for d in rec["same_class_draws"] for i in d["ids"])
             recs.append(rec)
         out["releases"][str(n)] = recs
         print(f"N = {n}: {len(recs)} releases, mean b {np.mean([x['b'] for x in recs]):.3f}, "
               f"mean baseline hit {np.mean([x['baseline_hit'] for x in recs]):.3f}", flush=True)
-    path = args.out_json or ("results/journal/baselines_mnist.json" if args.releases == "targets"
-                             else "results/journal/pilot/baselines_pilot.json")
+    suffix = "" if args.dataset == "mnist" else f"_{args.dataset}"
+    path = args.out_json or (f"results/journal/baselines_{args.dataset}.json" if args.releases == "targets"
+                             else f"results/journal/pilot/baselines_pilot{suffix}.json")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         json.dump(out, f, indent=1)

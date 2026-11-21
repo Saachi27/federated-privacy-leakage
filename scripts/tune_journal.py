@@ -27,7 +27,7 @@ BASIC = {"T-B": (5, [(1, 2), (2, 1)]), "T-A": (1, [(1, 2)])}
 
 
 def tuning_pairs():
-    """Pair i = tuning images (2i, 2i + 1), i = 0..11, on checkpoint i // 4."""
+    """Pair i = tuning images (2i, 2i + 1), i = 0..11, on checkpoint i // 4"""
     tuning = list(splits.JOURNAL.tuning)
     return [{"release": i, "image_indices": tuning[2 * i:2 * i + 2], "checkpoint": i // 4}
             for i in range(NUM_PAIRS)]
@@ -129,7 +129,7 @@ def tune_cell(args, cell):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--setting", choices=["mnist-fresh", "mnist-trained"], required=True)
+    p.add_argument("--setting", choices=am.SETTING_CHOICES, required=True)
     p.add_argument("--cells", nargs="+", choices=list(CELLS), default=list(CELLS))
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--restarts", type=int, default=2)
@@ -137,7 +137,7 @@ def main():
     p.add_argument("--cosine-iters", type=int, default=3000)
     p.add_argument("--unrolled-iters", type=int, default=3000)
     p.add_argument("--local-lr", default="auto", help="a number, or auto: the learning-rate rule pick")
-    p.add_argument("--lr-rule", default=am.LR_RULE)
+    p.add_argument("--lr-rule", default=None, help="default: the learning-rate rule file of the setting's dataset")
     p.add_argument("--out", default=os.path.join(am.PILOT_DIR, "tv"))
     p.add_argument("--summary-dir", default=am.PILOT_DIR)
     args = p.parse_args()

@@ -136,6 +136,32 @@ pilot() {
     > "$p/grid_summary.md" && echo "summary -> $p/grid_summary.md"
 }
 
+addons() {
+  # One step at a time (no two jobs share the CPU).
+  local out=results/journal/addons
+  mkdir -p "$out"
+  step "$out/run_pairs_$(date +%Y%m%d_%H%M%S).log" "$PY" scripts/attack_multiclient.py --releases targets \
+    --settings mnist-fresh mnist-trained --ns 4 --es 5 --splits pairs --workers "$JOBS" --out "$out"
+  step "$out/run_e10_$(date +%Y%m%d_%H%M%S).log" "$PY" scripts/attack_multiclient.py --releases targets \
+    --settings mnist-fresh --ns 2 --es 10 --splits single multi --workers "$JOBS" --out "$out"
+  step results/journal/pilot/tune_cifar10-fresh.out "$PY" scripts/tune_journal.py --setting cifar10-fresh \
+    --workers "$JOBS"
+  step "$out/run_cifar10_$(date +%Y%m%d_%H%M%S).log" "$PY" scripts/attack_multiclient.py --releases targets \
+    --settings cifar10-fresh --ns 2 --es 1 5 --splits single multi --workers "$JOBS" --out "$out"
+  local left
+  left=$("$PY" scripts/attack_multiclient.py --releases targets --settings mnist-fresh mnist-trained --ns 4 \
+           --es 5 --splits pairs --out "$out" --dry-run 2>/dev/null | grep -c '\.json$')
+  left=$((left + $("$PY" scripts/attack_multiclient.py --releases targets --settings mnist-fresh --ns 2 \
+           --es 10 --splits single multi --out "$out" --dry-run 2>/dev/null | grep -c '\.json$')))
+  left=$((left + $("$PY" scripts/attack_multiclient.py --releases targets --settings cifar10-fresh --ns 2 \
+           --es 1 5 --splits single multi --out "$out" --dry-run 2>/dev/null | grep -c '\.json$')))
+  if [ "$left" -eq 0 ]; then
+    "$PY" scripts/analyze_addons.py && echo "add-ons done -> results/journal/addons_report.md"
+  else
+    echo "$left add-on tasks still to run: re-run 'scripts/run_experiments.sh addons'"
+  fi
+}
+
 journal() {
   "$PY" scripts/analyze_journal.py --main-objective cosine
   "$PY" scripts/why_more.py
@@ -176,6 +202,7 @@ case "${1:-all}" in
   pilot) pilot; exit 0 ;;
   multiclient) multiclient; exit 0 ;;
   journal) journal; exit 0 ;;
-  *) echo "usage: $0 [study|core|extras|all|pilot|multiclient|journal]"; exit 2 ;;
+  addons) addons; exit 0 ;;
+  *) echo "usage: $0 [study|core|extras|all|pilot|multiclient|journal|addons]"; exit 2 ;;
 esac
 "$PY" scripts/summarize_results.py > /dev/null && echo "summary -> results/summary.md"
