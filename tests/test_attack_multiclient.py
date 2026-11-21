@@ -133,3 +133,40 @@ def test_a_wrong_checkpoint_hash_is_fatal(tmp_path, in_root, monkeypatch):
     with pytest.raises(am.Fatal):
         am.run_task(t)
     assert "fatal" in am.safe_run_task(t)
+
+
+def _fake_finished(task, checkpoint_hash):
+    """A finished record for this task (as run_task would leave it), with a given hash."""
+    os.makedirs(os.path.dirname(task["path"]), exist_ok=True)
+    rec = {k: v for k, v in task.items() if k != "path"}
+    rec["checkpoint_hash"] = checkpoint_hash
+    with open(task["path"], "w") as f:
+        json.dump(rec, f)
+    np.savez_compressed(task["path"].replace(".json", "_recon.npz"), recon_slots=np.zeros((2, 1, 28, 28)))
+
+
+def test_resume_stops_when_the_saved_checkpoint_hash_differs(tmp_path, monkeypatch):
+    task = am.make_tasks(_args(tmp_path, "--groups", "1"))[0]
+    monkeypatch.setattr(am, "current_checkpoint_hash", lambda setting, k: f"now-{setting}-{k}")
+    _fake_finished(task, f"now-mnist-fresh-{task['checkpoint']}")
+    am.check_finished(task)  # same hash: skipped quietly
+    _fake_finished(task, "an older model")
+    with pytest.raises(SystemExit, match="checkpoint hash"):
+        am.check_finished(task)
+
+    def broken(setting, k):
+        raise am.Fatal("checkpoint 0 hash does not match the recorded one")
+    monkeypatch.setattr(am, "current_checkpoint_hash", broken)
+    with pytest.raises(SystemExit, match="STOP"):
+        am.check_finished(task)
+
+
+def test_current_checkpoint_hash_is_the_pinned_fresh_hash(monkeypatch):
+    from src import checkpoints
+    monkeypatch.setattr(am, "_dataset", lambda name: (None, {"in_channels": 1, "num_classes": 10,
+                                                              "input_size": 28}))
+    monkeypatch.setattr(am, "_HASHES", {})
+    assert am.current_checkpoint_hash("mnist-fresh", 1) == checkpoints.FRESH_STATE_SHA256[1]
+    monkeypatch.setitem(checkpoints.FRESH_STATE_SHA256, 2, "0" * 64)
+    with pytest.raises(am.Fatal):
+        am.current_checkpoint_hash("mnist-fresh", 2)

@@ -160,12 +160,16 @@ _IMAGES = {}
 _HASHES = {}
 
 
-def load_images(dataset, indices):
-    """(image, label) for these test indices, cached per process."""
+def _dataset(dataset):
     if dataset not in _IMAGES:
         _, test_ds, meta = load_datasets(dataset, normalize=False)
         _IMAGES[dataset] = (test_ds, meta)
-    test_ds, meta = _IMAGES[dataset]
+    return _IMAGES[dataset]
+
+
+def load_images(dataset, indices):
+    """(image, label) for these test indices, cached per process."""
+    test_ds, meta = _dataset(dataset)
     pairs = [test_ds[i] for i in indices]
     return torch.stack([p[0] for p in pairs]), torch.tensor([int(p[1]) for p in pairs]), meta
 
@@ -179,6 +183,14 @@ def load_checkpoint(setting_name, meta, k):
     except RuntimeError as err:
         raise Fatal(f"{setting_name}: {err}") from err
     return model, h
+
+
+def current_checkpoint_hash(setting_name, k):
+    """The hash of checkpoint k as it is now (verified against the pinned hash), cached."""
+    if (setting_name, k) not in _HASHES:
+        _, meta = _dataset(SETTINGS[setting_name]["dataset"])
+        _HASHES[(setting_name, k)] = load_checkpoint(setting_name, meta, k)[1]
+    return _HASHES[(setting_name, k)]
 
 
 def write_atomic(path, write):
@@ -265,6 +277,15 @@ def check_finished(task):
                  "use a new --out or remove it on purpose")
     if not os.path.exists(task["path"].replace(".json", "_recon.npz")):
         sys.exit(f"{task['path']} has no reconstruction file")
+    # A finished task must have been made on the checkpoint we have now.
+    try:
+        now = current_checkpoint_hash(task["setting"], task["checkpoint"])
+    except Fatal as err:
+        sys.exit(f"STOP: {err}")
+    if rec.get("checkpoint_hash") != now:
+        sys.exit(f"STOP: {task['path']} was made on checkpoint hash {rec.get('checkpoint_hash')}, but "
+                 f"{task['setting']} checkpoint {task['checkpoint']} now hashes to {now}; "
+                 "use a new --out or remove it on purpose")
 
 
 def run_grid(args):

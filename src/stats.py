@@ -11,6 +11,7 @@ MORE = "more"
 SAME = "same"
 INCONCLUSIVE = "inconclusive"
 DESCRIPTIVE = "descriptive only"
+NO_PAIRS = "no paired releases"
 OUTCOME_ORDER = [NOT_TESTED, NEITHER, LESS, MORE, SAME, INCONCLUSIVE]
 MIN_PER_CHECKPOINT = 5
 
@@ -28,6 +29,8 @@ def _diffs_by_stratum(a, b, strata):
 
 def _weighted_mean(groups):
     n = sum(len(g) for g in groups.values())
+    if n == 0:
+        return float("nan")
     return float(sum(len(g) * g.mean() for g in groups.values()) / n)
 
 
@@ -66,6 +69,12 @@ def stratified_bootstrap_interval(groups, level, n_resamples=10_000, seed=0):
 def paired_diff_interval(a, b, strata=None, level=0.95, method="t", n_resamples=10_000, seed=0):
     """Interval for the mean release-level difference a - b, stratified by checkpoint."""
     groups = _diffs_by_stratum(a, b, strata)
+    if method not in ("t", "bootstrap"):
+        raise ValueError(f"unknown method {method!r}")
+    if not groups:
+        nan = float("nan")
+        return {"mean": nan, "lo": nan, "hi": nan, "level": level, "method": method, "n": 0, "strata": 0,
+                "status": NO_PAIRS}
     if method == "t":
         mean, lo, hi = stratified_t_interval(groups, level)
     elif method == "bootstrap":

@@ -35,7 +35,21 @@ def load_baselines(path):
     """{(N, release): baseline record} from scripts/baselines.py --journal."""
     with open(path) as f:
         data = json.load(f)
-    return {(int(n), rec["release"]): rec for n, recs in data["releases"].items() for rec in recs}, data
+    out = {}
+    for n, recs in data["releases"].items():
+        seen = set()
+        for rec in recs:
+            key = (int(n), rec["release"])
+            if key in out:
+                raise PairingError(f"baselines: two records for N = {n}, release {rec['release']}")
+            if "image_indices" not in rec:
+                raise PairingError(f"baselines: N = {n}, release {rec['release']} has no image_indices")
+            idx = tuple(rec["image_indices"])
+            if idx in seen:
+                raise PairingError(f"baselines: N = {n}, image indices {list(idx)} appear twice")
+            seen.add(idx)
+            out[key] = rec
+    return out, data
 
 
 def main_objective_from(path):
@@ -45,10 +59,38 @@ def main_objective_from(path):
     return None
 
 
+class PairingError(ValueError):
+    """Two records that should be the same release are not: stop."""
+
+
+PAIR_FIELDS = ("release", "image_indices", "checkpoint", "checkpoint_hash")
+
+
+def check_pair(x, y, what, fields=PAIR_FIELDS):
+    """Paired records must share release id, image indices, checkpoint and its hash."""
+    for f in fields:
+        if f not in x or f not in y:
+            raise PairingError(f"{what}: release {x.get('release')} has no {f} on one side")
+        if x[f] != y[f]:
+            raise PairingError(f"{what}: release {x.get('release')}: {f} differs ({x[f]} vs {y[f]})")
+
+
+def baseline_of(baselines, n, scores, what="baseline"):
+    """The baseline record of this release, joined by (N, release) and image indices."""
+    key = (n, scores["release"])
+    if key not in baselines:
+        raise PairingError(f"{what}: no baseline for N = {n}, release {scores['release']}")
+    b = baselines[key]
+    check_pair(scores, b, f"{what} N = {n}", fields=("release", "image_indices"))
+    return b
+
+
 def release_scores(rec, gallery):
     """S_r, a_r and h_r for one record."""
     ssim = [float(v) for v in rec["ssim"]]
-    out = {"release": rec["release"], "checkpoint": rec["checkpoint"], "s": float(np.mean(ssim)),
+    out = {"release": rec["release"], "checkpoint": rec["checkpoint"],
+           "checkpoint_hash": rec.get("checkpoint_hash"), "image_indices": [int(i) for i in rec["image_indices"]],
+           "labels": [int(c) for c in rec["labels"]], "s": float(np.mean(ssim)),
            "a": int(max(ssim) >= rr.PASS), "drift": rec["drift_cosine"], "norm_ratio": rec.get("norm_ratio")}
     if gallery is not None:
         slots = np.load(rec["recon_path"])["recon_slots"].astype(np.float32)
@@ -64,8 +106,20 @@ def build_cells(records, gallery):
         key = (rec["setting"], rec["n"], rec["e"], rec["split_name"], rec["attacker"])
         by_release = cells.setdefault(key, {})
         assert rec["release"] not in by_release, f"two records for release {rec['release']} in {key}"
+        if "checkpoint_hash" not in rec:
+            raise PairingError(f"{key} release {rec['release']}: record has no checkpoint_hash")
         by_release[rec["release"]] = release_scores(rec, gallery)
+    check_cells_paired(cells)
     return cells
+
+
+def check_cells_paired(cells):
+    """Every cell of a (setting, N) must hold the same release on the same images and checkpoint."""
+    first = {}
+    for key, cell in sorted(cells.items()):
+        for r, v in cell.items():
+            ref = first.setdefault((key[0], key[1], r), (key, v))
+            check_pair(v, ref[1], f"{key} vs {ref[0]}")
 
 
 def _ci(a, b, strata, level, method="t"):
@@ -73,27 +127,51 @@ def _ci(a, b, strata, level, method="t"):
     return stats.paired_diff_interval(a, b, strata, level=level, method=method, **kw)
 
 
+def paired_part(a, b, strata, levels):
+    """Counts per checkpoint first, then the intervals."""
+    counts = {k: 0 for k in CHECKPOINTS}
+    counts.update(stats.releases_per_checkpoint(strata) if len(strata) else {})
+    out = {"n": len(a), "per_checkpoint_n": counts,
+           "enough": stats.enough_releases(strata, checkpoints=CHECKPOINTS)}
+    if not len(a):
+        out["status"] = stats.NO_PAIRS
+        out["mean_diff"] = None
+        for lv in levels:
+            out[f"t{lv}"] = out[f"boot{lv}"] = None
+        return out
+    out["status"] = "decides" if out["enough"] else stats.DESCRIPTIVE
+    for lv in levels:
+        out[f"t{lv}"] = _ci(a, b, strata, lv / 100) if out["enough"] else None
+        out[f"boot{lv}"] = _ci(a, b, strata, lv / 100, "bootstrap")
+    out["mean_diff"] = out[f"boot{levels[0]}"]["mean"]
+    return out
+
+
 def versus_baseline(cell, baselines, n, score="s", base="b"):
-    """Paired (score - baseline) per release: 95% t and bootstrap intervals."""
+    """Paired (score - baseline) per release: 95% t (if enough releases) and bootstrap."""
     rels = sorted(cell)
     a = [cell[r][score] for r in rels]
-    b = [float(baselines[(n, r)][base]) for r in rels]
+    b = [float(baseline_of(baselines, n, cell[r])[base]) for r in rels]
     strata = [cell[r]["checkpoint"] for r in rels]
-    return {"t95": _ci(a, b, strata, 0.95), "boot95": _ci(a, b, strata, 0.95, "bootstrap"),
-            "mean_score": float(np.mean(a)), "mean_baseline": float(np.mean(b)),
-            "enough": stats.enough_releases(strata, checkpoints=CHECKPOINTS), "n": len(rels),
+    return {**paired_part(a, b, strata, (95,)),
+            "mean_score": float(np.mean(a)) if a else None, "mean_baseline": float(np.mean(b)) if b else None,
             "per_checkpoint": per_checkpoint(cell, score)}
+
+
+def passes(part):
+    """Beats-baseline / positive-control result: True/False, or None if descriptive only."""
+    return stats.beats_baseline(part["t95"]["lo"]) if part["status"] == "decides" else None
 
 
 def gap(multi, single, score="s"):
     """Paired multi - single per release (both splits present): 90% and 95% intervals."""
     rels = sorted(set(multi) & set(single))
+    for r in rels:
+        check_pair(multi[r], single[r], "gap")
     a = [multi[r][score] for r in rels]
     b = [single[r][score] for r in rels]
     strata = [multi[r]["checkpoint"] for r in rels]
-    out = {"t90": _ci(a, b, strata, 0.90), "t95": _ci(a, b, strata, 0.95),
-           "boot90": _ci(a, b, strata, 0.90, "bootstrap"), "n": len(rels),
-           "enough": stats.enough_releases(strata, checkpoints=CHECKPOINTS)}
+    out = paired_part(a, b, strata, (90, 95))
     if score in ("a", "h"):
         pa, pb = np.array(a, bool), np.array(b, bool)
         out["counts"] = {"both": int((pa & pb).sum()), "only multi": int((pa & ~pb).sum()),
@@ -118,24 +196,79 @@ def label_block(cells, baselines, setting, n, kind, main_kind):
     single = versus_baseline(cells[single_key], baselines, n)
     multi = versus_baseline(cells[multi_key], baselines, n)
     g = gap(cells[multi_key], cells[single_key])
-    enough = pc["enough"] and single["enough"] and multi["enough"] and g["enough"]
-    outcome = stats.classify_outcome(pc["t95"]["lo"], single["t95"]["lo"], multi["t95"]["lo"],
-                                     g["t90"]["lo"], g["t90"]["hi"], enough=enough)
+    # Counts are checked before any interval is read.
+    enough = all(p["status"] == "decides" for p in (pc, single, multi, g))
+    if enough:
+        outcome = stats.classify_outcome(pc["t95"]["lo"], single["t95"]["lo"], multi["t95"]["lo"],
+                                         g["t90"]["lo"], g["t90"]["hi"])
+    else:
+        outcome = stats.DESCRIPTIVE
     return {"outcome": outcome, "pc": pc, "single": single, "multi": multi, "gap": g,
-            "pc_passes": stats.beats_baseline(pc["t95"]["lo"]),
-            "single_bb": stats.beats_baseline(single["t95"]["lo"]),
-            "multi_bb": stats.beats_baseline(multi["t95"]["lo"])}
+            "pc_passes": passes(pc) if enough else None,
+            "single_bb": passes(single) if enough else None,
+            "multi_bb": passes(multi) if enough else None}
 
 
-def analyze(records, baselines, gallery, main_objective="cosine"):
+SAME_LABEL, DIFF_LABEL = "same label", "different labels"
+
+
+def same_label(scores):
+    return len(set(scores["labels"])) == 1
+
+
+def label_split(multi, single):
+    """The gap split by same-label vs different-label releases."""
+    out = {}
+    for name, want in ((SAME_LABEL, True), (DIFF_LABEL, False)):
+        m = {r: v for r, v in multi.items() if same_label(v) == want}
+        s = {r: v for r, v in single.items() if same_label(v) == want}
+        g = gap(m, s)
+        paired = sorted(set(m) & set(s))
+        g["releases"] = paired
+        g["median_drift"] = float(np.median([m[r]["drift"] for r in paired])) if paired else None
+        out[name] = g
+    return out
+
+
+def drift_per_release(cells, setting, n):
+    """One row per release at E = 5: checkpoint, labels, drift, norm ratio."""
+    rows = {}
+    for k, c in cells.items():
+        if k[:3] == (setting, n, 5):
+            for r, v in c.items():
+                rows.setdefault(r, {"release": r, "checkpoint": v["checkpoint"], "labels": v["labels"],
+                                    "same_label": same_label(v), "drift": v["drift"],
+                                    "norm_ratio": v["norm_ratio"]})
+    return [rows[r] for r in sorted(rows)]
+
+
+def expected_cells(setting, n):
+    """The grid of one (setting, N) block, as scripts/attack_multiclient.py runs it."""
+    return [(setting, n, 1, f"1x{n}", k) for k in ("lbfgs", "cosine")] + \
+        [(setting, n, 5, sp, k) for sp in (f"1x{n}", f"{n}x1") for k in ("lbfgs", "cosine", "unrolled")]
+
+
+def missing_releases(cells, baselines, blocks):
+    """{cell key: release ids in the baseline file for that N but not in the cell}."""
+    out = {}
+    for setting, n in blocks:
+        want = sorted(r for (bn, r) in baselines if bn == n)
+        for key in expected_cells(setting, n):
+            have = cells.get(key, {})
+            out["|".join(map(str, key))] = {"expected": len(want), "have": len(have),
+                                             "missing": [r for r in want if r not in have]}
+    return out
+
+
+def analyze(records, baselines, gallery, main_objective="cosine", gallery_sizes=None):
     """All numbers of the report, as a dict."""
     assert main_objective in ("cosine", "basic"), main_objective
     main_kind = "cosine" if main_objective == "cosine" else "lbfgs"
     second_kind = "lbfgs" if main_kind == "cosine" else "cosine"
     cells = build_cells(records, gallery)
     for key, cell in cells.items():
-        for r in cell:
-            assert (key[1], r) in baselines, f"no baseline for N = {key[1]}, release {r}"
+        for v in cell.values():
+            baseline_of(baselines, key[1], v, f"baseline for {key}")
     blocks = sorted({(k[0], k[1]) for k in cells}, key=lambda b: (b != MAIN, b[1], b[0]))
     res = {"main_objective": main_objective, "main_kind": main_kind, "second_kind": second_kind,
            "blocks": [list(b) for b in blocks], "labels": {}, "cells": {}, "drift": {}, "gaps": {}}
@@ -177,7 +310,7 @@ def analyze(records, baselines, gallery, main_objective="cosine"):
     res["baselines"] = {}
     for n in sorted({k[1] for k in cells}):
         rels = sorted({r for k, c in cells.items() if k[1] == n for r in c})
-        bs = [baselines[(n, r)] for r in rels]
+        bs = [baselines[(n, r)] for r in rels]  # each already joined and checked above
         res["baselines"][str(n)] = {
             "releases": len(bs), "mean_b": float(np.mean([b["b"] for b in bs])),
             "mean_A": float(np.mean([b["A"] for b in bs])), "mean_S": float(np.mean([b["S"] for b in bs])),
@@ -188,6 +321,17 @@ def analyze(records, baselines, gallery, main_objective="cosine"):
                         for k in bs[0].get("context_mean_ssim", {})}}
     main_key = f"{MAIN[0]}|{MAIN[1]}|unrolled"
     res["main"] = res["labels"].get(main_key, {"outcome": "not run"})
+    # Secondary; computed after the main outcome and never fed back.
+    res["drift_releases"] = {f"{s}|{n}": drift_per_release(cells, s, n) for s, n in blocks}
+    mk, sk = (*MAIN, 5, f"{MAIN[1]}x1", "unrolled"), (*MAIN, 5, f"1x{MAIN[1]}", "unrolled")
+    res["label_split"] = label_split(cells[mk], cells[sk]) if mk in cells and sk in cells else None
+    res["missing_releases"] = missing_releases(cells, baselines, blocks)
+    # Every class gallery size is reported.
+    file_sizes = {int(c): int(v) for c, v in gallery_sizes.items()} if gallery_sizes else None
+    used = {int(c): int(v) for c, v in gallery.sizes().items()} if gallery is not None else None
+    if used and file_sizes and used != file_sizes:
+        raise ValueError(f"gallery sizes {used} differ from the baseline file's {file_sizes}")
+    res["gallery_sizes"] = used or file_sizes
     return res
 
 
@@ -197,6 +341,23 @@ def _f(x, d=3):
 
 def _iv(ci, d=3):
     return f"{_f(ci['mean'], d)} [{_f(ci['lo'], d)}, {_f(ci['hi'], d)}]"
+
+
+def _n(p):
+    return ", ".join(f"k{k}: {v}" for k, v in sorted(p["per_checkpoint_n"].items(), key=lambda kv: int(kv[0])))
+
+
+def _part(p, lv=95):
+    """A paired part: its t-interval if it decides, else the numbers only."""
+    if p["status"] == stats.NO_PAIRS:
+        return "no paired releases"
+    if p["status"] != "decides":
+        return f"descriptive only: {_iv(p[f'boot{lv}'])} bootstrap; releases {_n(p)}"
+    return _iv(p[f"t{lv}"])
+
+
+def _yes(v, yes="yes", no="no"):
+    return "descriptive only (no pass/fail)" if v is None else (yes if v else no)
 
 
 def _pc(d):
@@ -225,15 +386,19 @@ def render(res, title="Journal results"):
         g = m["gap"]["t90"]
         L += [f"**Outcome: {m['outcome']}**", "",
               "| Part | Estimate [interval] | Rule | Result |", "|---|---|---|---|",
-              f"| Positive control (s − b, E = 1) | {_iv(m['pc']['t95'])} (95%) | lower end > 0 | "
-              f"{'passes' if m['pc_passes'] else 'fails'} |",
-              f"| 1 × 2 beats baseline (s − b) | {_iv(m['single']['t95'])} (95%) | lower end > 0 | "
-              f"{'yes' if m['single_bb'] else 'no'} |",
-              f"| 2 × 1 beats baseline (s − b) | {_iv(m['multi']['t95'])} (95%) | lower end > 0 | "
-              f"{'yes' if m['multi_bb'] else 'no'} |",
-              f"| Gap 2 × 1 − 1 × 2 | {_iv(g)} (90%) | margin ±0.05 | n = {m['gap']['n']} |", "",
-              f"Bootstrap check (report only): gap 90% {_iv(m['gap']['boot90'])}; "
-              f"control 95% {_iv(m['pc']['boot95'])}.", ""]
+              f"| Positive control (s − b, E = 1) | {_part(m['pc'])} (95%) | lower end > 0 | "
+              f"{_yes(m['pc_passes'], 'passes', 'fails')} |",
+              f"| 1 × 2 beats baseline (s − b) | {_part(m['single'])} (95%) | lower end > 0 | "
+              f"{_yes(m['single_bb'])} |",
+              f"| 2 × 1 beats baseline (s − b) | {_part(m['multi'])} (95%) | lower end > 0 | "
+              f"{_yes(m['multi_bb'])} |",
+              f"| Gap 2 × 1 − 1 × 2 | {_part(m['gap'], 90)} (90%) | margin ±0.05 | n = {m['gap']['n']} |", ""]
+        if m["gap"]["status"] != stats.NO_PAIRS and m["pc"]["status"] != stats.NO_PAIRS:
+            L += [f"Bootstrap check (report only): gap 90% {_iv(m['gap']['boot90'])}; "
+                  f"control 95% {_iv(m['pc']['boot95'])}.", ""]
+        if m["outcome"] == stats.DESCRIPTIVE:
+            L += ["Fewer than 5 paired releases on some checkpoint: numbers only, "
+                  "no outcome label and no pass/fail.", ""]
         if m["outcome"] in SENTENCE:
             L += [f"Sentence: \"Under attacker 2, on MNIST fresh at N = 2 and E = 5, the 2-client sum "
                   f"{SENTENCE[m['outcome']]} the 1-client update (gap {_f(g['mean'])}, 90% interval "
@@ -248,18 +413,18 @@ def render(res, title="Journal results"):
         if lab["outcome"] == "not run":
             L.append(f"| {setting} | {n} | {KIND_LABEL[kind]} | not run | – | – | – | – |")
             continue
-        L.append(f"| {setting} | {n} | {KIND_LABEL[kind]} | {lab['outcome']} | {_iv(lab['pc']['t95'])} | "
-                 f"{_iv(lab['single']['t95'])} | {_iv(lab['multi']['t95'])} | {_iv(lab['gap']['t90'])} |")
+        L.append(f"| {setting} | {n} | {KIND_LABEL[kind]} | {lab['outcome']} | {_part(lab['pc'])} | "
+                 f"{_part(lab['single'])} | {_part(lab['multi'])} | {_part(lab['gap'], 90)} |")
     L += ["", "## 3. Second endpoint: any image passes (SSIM ≥ 0.9)", "",
           "| Setting | N | E | Split | Attacker | Rate | Rate − baseline (95%) |", "|---|---|---|---|---|---|---|"]
     for key, c in res["cells"].items():
-        L.append(f"| {_cell_name(key)} | {c['any_pass_rate']:.3f} | {_iv(c['any_pass_vs_baseline']['t95'])} |")
+        L.append(f"| {_cell_name(key)} | {c['any_pass_rate']:.3f} | {_part(c['any_pass_vs_baseline'])} |")
     L += ["", "| Setting | N | Attacker | Gap N×1 − 1×N (90%) | (95%) | Both / only N×1 / only 1×N / neither |",
           "|---|---|---|---|---|---|"]
     for key, g in res["gaps"].items():
         setting, n, kind = key.split("|")
         c = g["any_pass"]["counts"]
-        L.append(f"| {setting} | {n} | {KIND_LABEL[kind]} | {_iv(g['any_pass']['t90'])} | {_iv(g['any_pass']['t95'])} "
+        L.append(f"| {setting} | {n} | {KIND_LABEL[kind]} | {_part(g['any_pass'], 90)} | {_part(g['any_pass'])} "
                  f"| {c['both']} / {c['only multi']} / {c['only single']} / {c['neither']} |")
     hit = any("hit_rate" in c for c in res["cells"].values())
     L += ["", "## 4. Averages hide the risk", "",
@@ -290,21 +455,57 @@ def render(res, title="Journal results"):
         if key.endswith(f"|{sk}"):
             setting, n, e, split, _ = key.split("|")
             L.append(f"| {setting} | {n} | {e} | {split} | {c['mean_ssim']:.3f} | "
-                     f"{_iv(c['ssim_vs_baseline']['t95'])} | {c['any_pass_rate']:.3f} |")
+                     f"{_part(c['ssim_vs_baseline'])} | {c['any_pass_rate']:.3f} |")
+    sizes = res.get("gallery_sizes")
+    size_line = ("Class gallery sizes (every test image of the class): " + ", ".join(
+        f"class {c}: {v:,}" for c, v in sorted(sizes.items(), key=lambda kv: int(kv[0]))) + ".") if sizes else \
+        "Class gallery sizes: not known (no gallery and none in the baseline file)."
+    if not hit:
+        L += ["", "## 7. Retrieval", "", "Retrieval not computed in this report.", "", size_line]
     if hit:
-        L += ["", "## 7. Retrieval (top-1 in the slot label's class gallery)", "",
+        L += ["", "## 7. Retrieval (top-1 in the slot label's class gallery)", "", size_line, "",
               "| Setting | N | E | Split | Attacker | Hit rate | Hit − baseline (95%) | Per checkpoint |",
               "|---|---|---|---|---|---|---|---|"]
         for key, c in res["cells"].items():
-            L.append(f"| {_cell_name(key)} | {c['hit_rate']:.3f} | {_iv(c['hit_vs_baseline']['t95'])} | "
+            L.append(f"| {_cell_name(key)} | {c['hit_rate']:.3f} | {_part(c['hit_vs_baseline'])} | "
                      f"{_pc(c['per_checkpoint_hit'])} |")
         L += ["", "| Setting | N | Attacker | Hit gap N×1 − 1×N (90%) | (95%) | Both / only N×1 / only 1×N / neither |",
               "|---|---|---|---|---|---|"]
         for key, g in res["gaps"].items():
             setting, n, kind = key.split("|")
             c = g["hit"]["counts"]
-            L.append(f"| {setting} | {n} | {KIND_LABEL[kind]} | {_iv(g['hit']['t90'])} | {_iv(g['hit']['t95'])} | "
+            L.append(f"| {setting} | {n} | {KIND_LABEL[kind]} | {_part(g['hit'], 90)} | {_part(g['hit'])} | "
                      f"{c['both']} / {c['only multi']} / {c['only single']} / {c['neither']} |")
+    L += ["", "## 8. Drift and labels (pre-declared secondary)", "",
+          "On the fresh model a same-label pair barely drifts, so it acts like E = 1. Secondary: "
+          "this never changes the main outcome.", ""]
+    ls = res.get("label_split")
+    if ls is None:
+        L += ["Main gap split by labels: not run (cells missing).", ""]
+    else:
+        L += ["Main gap (MNIST fresh, N = 2, E = 5, attacker 2), 2 × 1 − 1 × 2, split by the release's labels:", "",
+              "| Releases | Paired n | Per checkpoint | Median drift | Gap (90%) | Gap (95%) |",
+              "|---|---|---|---|---|---|"]
+        for name, g in ls.items():
+            L.append(f"| {name} | {g['n']} | {_n(g)} | {_f(g['median_drift'], 4)} | {_part(g, 90)} | "
+                     f"{_part(g)} |")
+        L.append("")
+    for key, rows in res.get("drift_releases", {}).items():
+        setting, n = key.split("|")
+        if not rows:
+            continue
+        L += [f"Drift per release, {setting}, N = {n} (E = 5):", "",
+              "| Release | Checkpoint | Labels | Same label | Drift | Norm ratio |", "|---|---|---|---|---|---|"]
+        L += [f"| {r['release']} | {r['checkpoint']} | {', '.join(map(str, r['labels']))} | "
+              f"{'yes' if r['same_label'] else 'no'} | {r['drift']:.4f} | {_f(r['norm_ratio'], 4)} |" for r in rows]
+        L.append("")
+    L += ["## 9. Releases per cell", "",
+          "Expected: every release in the baseline file for that N. No release is dropped after a result is seen.", "",
+          "| Setting | N | E | Split | Attacker | Releases | Of | Missing release ids |", "|---|---|---|---|---|---|---|---|"]
+    for key, m in res.get("missing_releases", {}).items():
+        miss = "none" if not m["missing"] else ("all (no records)" if not m["have"] else
+                                                 ", ".join(map(str, m["missing"])))
+        L.append(f"| {_cell_name(key)} | {m['have']} | {m['expected']} | {miss} |")
     L += ["", "Settings (fresh vs trained) use the same releases; any comparison between them is descriptive."]
     return "\n".join(L) + "\n"
 
@@ -345,9 +546,9 @@ def main():
     records = load_records(args.records)
     if not records:
         sys.exit(f"no records under {args.records}")
-    baselines, _ = load_baselines(args.baselines)
+    baselines, base_data = load_baselines(args.baselines)
     gallery = None if args.no_retrieval else mnist_gallery()
-    res = analyze(records, baselines, gallery, main_objective)
+    res = analyze(records, baselines, gallery, main_objective, base_data.get("gallery_sizes"))
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out + ".json", "w") as f:
         json.dump(_jsonable(res), f, indent=1)

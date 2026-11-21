@@ -157,3 +157,11 @@ def test_too_few_releases_per_checkpoint_gives_no_label():
     assert not stats.enough_releases(np.repeat([0, 1], 10), checkpoints=[0, 1, 2])  # checkpoint 2 missing
     assert not stats.enough_releases(np.array([], int))
     assert stats.classify_outcome(0.3, 0.2, 0.15, -0.04, 0.03, enough=False) == stats.DESCRIPTIVE
+
+
+@pytest.mark.parametrize("method", ["t", "bootstrap"])
+def test_no_paired_releases_gives_nan_not_a_crash(method):
+    ci = stats.paired_diff_interval([], [], [], level=0.9, method=method)
+    assert ci["n"] == 0 and ci["status"] == stats.NO_PAIRS
+    assert np.isnan(ci["mean"]) and np.isnan(ci["lo"]) and np.isnan(ci["hi"])
+    assert not stats.beats_baseline(ci["lo"])

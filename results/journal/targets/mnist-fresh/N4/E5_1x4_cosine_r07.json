@@ -1,0 +1,102 @@
+{
+ "setting": "mnist-fresh",
+ "n": 4,
+ "e": 5,
+ "split": [
+  1,
+  4
+ ],
+ "attacker": "cosine",
+ "release": 7,
+ "image_indices": [
+  4419,
+  429,
+  361,
+  4857
+ ],
+ "checkpoint": 0,
+ "local_lr": 0.3,
+ "tv_key": "T-B",
+ "tv": 0.001,
+ "restart_seeds": [
+  40070,
+  40071
+ ],
+ "iters": 300,
+ "cosine_iters": 3000,
+ "unrolled_iters": 3000,
+ "releases": "targets",
+ "git_commit": "2426fc81bf563ca4b490693d90fce24a34699b83",
+ "attacker_number": 1,
+ "objective": "cosine",
+ "split_name": "1x4",
+ "checkpoint_hash": "42e4cc7a027b3e158ce01a217131f7293d0f0ae8947474821a457e17f87a0fac",
+ "labels": [
+  8,
+  8,
+  6,
+  0
+ ],
+ "client_partition": [
+  [
+   4419,
+   429,
+   361,
+   4857
+  ]
+ ],
+ "drift_cosine": 0.7246906161308289,
+ "norm_ratio": 0.7240149392991787,
+ "release_norm": 6.309994220733643,
+ "restart_losses": [
+  0.17213116586208344,
+  0.17221921682357788
+ ],
+ "best_restart": 0,
+ "final_loss": 0.17213116586208344,
+ "slot_labels": [
+  8,
+  8,
+  6,
+  0
+ ],
+ "slot_to_target": [
+  0,
+  3,
+  2,
+  1
+ ],
+ "target_to_slot": [
+  0,
+  3,
+  2,
+  1
+ ],
+ "ssim": [
+  0.03207774832844734,
+  0.040320027619600296,
+  0.042647358030080795,
+  0.04831114411354065
+ ],
+ "ssim_zeropad": [
+  0.015815936028957367,
+  0.01333252526819706,
+  0.025540195405483246,
+  0.024653887376189232
+ ],
+ "psnr": [
+  3.712679147720337,
+  3.7880930304527283,
+  3.5980647802352905,
+  3.8895848393440247
+ ],
+ "mse": [
+  0.42533591389656067,
+  0.41801387071609497,
+  0.4367103576660156,
+  0.4083584249019623
+ ],
+ "recon_order": "slot",
+ "recon_file": "E5_1x4_cosine_r07_recon.npz",
+ "seconds": 33.97269797325134
+}
