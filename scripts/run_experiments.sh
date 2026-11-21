@@ -136,6 +136,12 @@ pilot() {
     > "$p/grid_summary.md" && echo "summary -> $p/grid_summary.md"
 }
 
+journal() {
+  "$PY" scripts/analyze_journal.py --main-objective cosine
+  "$PY" scripts/why_more.py
+  "$PY" scripts/make_journal_figures.py
+}
+
 core() {
   { train mnist_baseline --config configs/mnist.yaml
     train mnist_mask --config configs/mnist.yaml --mask
@@ -169,6 +175,7 @@ case "${1:-all}" in
   all) study; core; extras ;;
   pilot) pilot; exit 0 ;;
   multiclient) multiclient; exit 0 ;;
-  *) echo "usage: $0 [study|core|extras|all|pilot|multiclient]"; exit 2 ;;
+  journal) journal; exit 0 ;;
+  *) echo "usage: $0 [study|core|extras|all|pilot|multiclient|journal]"; exit 2 ;;
 esac
 "$PY" scripts/summarize_results.py > /dev/null && echo "summary -> results/summary.md"
