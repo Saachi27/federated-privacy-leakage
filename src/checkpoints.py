@@ -16,6 +16,15 @@ FRESH_STATE_SHA256 = {
     2: "f663b4402199ae66fc5f1c80422b14f10178493b05f9093f61b5a695b0754579",
 }
 
+CIFAR10_FRESH_STATE_SHA256 = {
+    0: "ec405de214bdde62bf8fceacc1bf79fb3bcd12663c0f881c836feb359fefdf94",
+    1: "2dd0ea4ecc9ff84ff0906dc5132605f505db1fa684b3e34108d38cc24649147b",
+    2: "8752268162daf58a29496275b10c14602e8b69a6761c28d6314cb630582e75f6",
+}
+
+# Fresh-model tables by dataset.
+FRESH_BY_DATASET = {"mnist": FRESH_STATE_SHA256, "cifar10": CIFAR10_FRESH_STATE_SHA256}
+
 
 def file_sha256(path):
     with open(path, "rb") as f:
@@ -37,12 +46,20 @@ def checkpoint_hash(model, k, model_path=None):
     return file_sha256(model_path.format(seed=k)) if model_path else state_dict_sha256(model)
 
 
-def verify(model, k, model_path=None):
+def verify(model, k, model_path=None, dataset="mnist"):
     """Return the checkpoint hash; raise if it does not match the recorded one."""
+    if model_path:
+        if dataset != "mnist":
+            raise RuntimeError(f"no recorded trained hashes for {dataset}")
+        table = TRAINED_SHA256
+    else:
+        if dataset not in FRESH_BY_DATASET:
+            raise RuntimeError(f"no recorded fresh hashes for {dataset}")
+        table = FRESH_BY_DATASET[dataset]
+    want = table.get(k)
     got = checkpoint_hash(model, k, model_path)
-    want = (TRAINED_SHA256 if model_path else FRESH_STATE_SHA256).get(k)
     if want is None:
-        raise RuntimeError(f"no recorded hash for checkpoint {k} ({'trained' if model_path else 'fresh'})")
+        raise RuntimeError(f"no recorded hash for checkpoint {k} ({'trained' if model_path else 'fresh'}, {dataset})")
     if got != want:
         raise RuntimeError(f"checkpoint {k} hash {got} does not match the recorded {want}; stopping")
     return got

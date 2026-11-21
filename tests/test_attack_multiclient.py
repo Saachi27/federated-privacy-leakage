@@ -38,6 +38,27 @@ def test_target_releases_follow_the_plan(in_root, n):
     assert [r["release"] for r in rel] == list(range(30))
 
 
+@pytest.mark.skipif(not os.path.exists(os.path.join(ROOT, "results/journal/splits_cifar10.json")),
+                    reason="CIFAR-10 split file not written")
+def test_cifar10_target_releases_use_the_cifar10_split(in_root):
+    rel = am.target_releases(2, "cifar10")
+    cifar = splits.journal_splits("cifar10")
+    assert [r["image_indices"] for r in rel] == cifar.releases(2)
+    assert rel[0]["image_indices"] != splits.JOURNAL.releases(2)[0]
+    assert [r["checkpoint"] for r in rel] == [0] * 10 + [1] * 10 + [2] * 10
+
+
+def test_settings_pick_their_dataset_and_lr_rule_file(tmp_path):
+    args = am.parse_args(["--releases", "targets", "--out", str(tmp_path)])
+    assert args.settings == ["mnist-fresh", "mnist-trained"]  # a bare run stays MNIST
+    assert am.lr_rule_path(args, "mnist-fresh") == am.LR_RULE
+    assert am.lr_rule_path(args, "cifar10-fresh").endswith("lr_rule_cifar10.json")
+    args = am.parse_args(["--settings", "cifar10-fresh", "--lr-rule", "x.json", "--out", str(tmp_path)])
+    assert am.lr_rule_path(args, "cifar10-fresh") == "x.json"
+    with pytest.raises(AssertionError):  # CIFAR-10 targets are protected too
+        am.range_releases(2, 5, (82, 400), 0, "cifar10")
+
+
 def test_restart_seeds_follow_the_plan():
     assert am.restart_seed(2, 0) == 20000 and am.restart_seed(4, 29) == 40290
 

@@ -33,6 +33,9 @@ E1_DRIFT_MIN = 0.9999  # Below this at E = 1 is a bug
 CUTS = [("mnist-trained", 4), ("mnist-fresh", 4), ("mnist-trained", 2)]
 PILOT_DIR = "results/journal/pilot"
 LR_RULE = os.path.join(PILOT_DIR, "lr_rule.json")
+# The learning-rate rule's file per dataset; the MNIST file is never rewritten for another dataset.
+LR_RULE_BY_DATASET = {"mnist": LR_RULE, "cifar10": os.path.join(PILOT_DIR, "lr_rule_cifar10.json")}
+SETTING_CHOICES = ["mnist-fresh", "mnist-trained", "cifar10-fresh"]
 TV_FILE = os.path.join(PILOT_DIR, "tv_{setting}.json")
 OUT = {"targets": "results/journal/targets", "pilot": os.path.join(PILOT_DIR, "grid"),
        "range": "results/journal/smoke"}
@@ -50,9 +53,13 @@ def restart_seed(n, r):
     return 10000 * n + 10 * r
 
 
-def target_releases(n):
+def dataset_of(setting):
+    return SETTINGS[setting]["dataset"]
+
+
+def target_releases(n, dataset="mnist"):
     """The 30 target releases for N, each on checkpoint r // 10."""
-    rel = splits.load_split_file("mnist").releases(n)
+    rel = splits.load_split_file(dataset).releases(n)
     return [{"release": r, "image_indices": idx, "checkpoint": r // 10} for r, idx in enumerate(rel)]
 
 
@@ -63,10 +70,10 @@ def pilot_releases(n):
             for i in range(len(tuning) // n)]
 
 
-def range_releases(n, count, target_range, seed):
+def range_releases(n, count, target_range, seed, dataset="mnist"):
     """Smoke tests only: disjoint groups drawn from a range that holds no target image."""
     pool = np.arange(*target_range)
-    clash = set(pool.tolist()) & set(splits.JOURNAL.targets)
+    clash = set(pool.tolist()) & set(splits.journal_splits(dataset).targets)
     assert not clash, f"--target-range holds {len(clash)} target images; smoke tests may not use targets"
     assert count * n <= len(pool), f"{count} groups of {n} need more than {len(pool)} images"
     order = np.random.default_rng(seed).permutation(pool)
@@ -74,13 +81,13 @@ def range_releases(n, count, target_range, seed):
             for g in range(count)]
 
 
-def releases_for(args, n):
+def releases_for(args, n, dataset="mnist"):
     if args.target_range is not None:
-        rel = range_releases(n, args.first_group + args.groups, args.target_range, args.group_seed)
+        rel = range_releases(n, args.first_group + args.groups, args.target_range, args.group_seed, dataset)
     elif args.releases == "pilot":
-        rel = pilot_releases(n)
+        rel = pilot_releases(n)  # tuning images 0-49: the same indices for every
     else:
-        rel = target_releases(n)
+        rel = target_releases(n, dataset)
     return rel[args.first_group:args.first_group + args.groups]
 
 
@@ -122,7 +129,7 @@ def make_tasks(args):
     tasks = []
     for setting, n in blocks(args):
         lr = local_lr_for(args, setting)
-        for rel in releases_for(args, n):
+        for rel in releases_for(args, n, dataset_of(setting)):
             seed = restart_seed(n, rel["release"])
             for e, split, attacker in cells(n, args.es, args.splits, args.attackers):
                 key = tv_key(e, attacker)
@@ -149,12 +156,18 @@ def cosine_tv_for(args, setting, key):
         return float(json.load(f)["chosen"][key])
 
 
+def lr_rule_path(args, setting):
+    """--lr-rule if given, else the learning-rate rule file of the setting's dataset."""
+    return args.lr_rule or LR_RULE_BY_DATASET[dataset_of(setting)]
+
+
 def local_lr_for(args, setting):
     if args.local_lr != "auto":
         return float(args.local_lr)
-    if not os.path.exists(args.lr_rule):
-        sys.exit(f"{args.lr_rule} not found: run --lr-grid first, or pass --local-lr")
-    with open(args.lr_rule) as f:
+    path = lr_rule_path(args, setting)
+    if not os.path.exists(path):
+        sys.exit(f"{path} not found: run --lr-grid first, or pass --local-lr")
+    with open(path) as f:
         return float(json.load(f)["settings"][setting]["chosen_lr"])
 
 
@@ -181,7 +194,7 @@ def load_checkpoint(setting_name, meta, k):
     setting = SETTINGS[setting_name]
     model = build_target(meta, k, setting["model_path"])
     try:
-        h = checkpoints.verify(model, k, setting["model_path"])
+        h = checkpoints.verify(model, k, setting["model_path"], dataset=setting["dataset"])
     except RuntimeError as err:
         raise Fatal(f"{setting_name}: {err}") from err
     return model, h
@@ -339,8 +352,12 @@ def pick_lr(medians, target=DRIFT_TARGET):
 
 def lr_grid(args):
     """The learning-rate rule per setting: median drift at N = 2, E = 5 over 25 tuning pairs x 3 checkpoints."""
-    if os.path.exists(args.lr_rule) and not args.force:
-        sys.exit(f"{args.lr_rule} exists; pass --force to redo it")
+    paths = {lr_rule_path(args, s) for s in args.settings}
+    if len(paths) != 1:
+        sys.exit("--lr-grid writes one file: run it for one dataset's settings at a time")
+    path = paths.pop()
+    if os.path.exists(path) and not args.force:
+        sys.exit(f"{path} exists; pass --force to redo it")
     result = {"rule": f"smallest lr with median drift cosine <= {DRIFT_TARGET}, else the largest "
                       "", "n": 2, "local_steps": args.lr_grid_steps, "lrs": args.lrs,
               "pairs": lr_tuning_pairs(), "checkpoints": CHECKPOINTS, "git_commit": args.git_commit,
@@ -364,9 +381,9 @@ def lr_grid(args):
             "seconds": time.time() - start}
         print(f"{setting}: median drift " + ", ".join(f"lr {k:g} -> {v:.4f}" for k, v in medians.items()) +
               f"; chosen lr {chosen:g}" + (" (grid edge)" if edge else ""), flush=True)
-    os.makedirs(os.path.dirname(args.lr_rule), exist_ok=True)
-    write_atomic(args.lr_rule, lambda f: f.write(json.dumps(result, indent=1).encode()))
-    print(f"Saved -> {args.lr_rule}")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    write_atomic(path, lambda f: f.write(json.dumps(result, indent=1).encode()))
+    print(f"Saved -> {path}")
 
 
 def summary(args):
@@ -411,7 +428,7 @@ def git_commit():
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--settings", nargs="+", choices=["mnist-fresh", "mnist-trained"],
+    p.add_argument("--settings", nargs="+", choices=SETTING_CHOICES,
                    default=["mnist-fresh", "mnist-trained"])
     p.add_argument("--ns", nargs="+", type=int, default=[2, 4], choices=[2, 4])
     p.add_argument("--es", nargs="+", type=int, default=[1, 5])
@@ -429,7 +446,7 @@ def parse_args(argv=None):
                    help="smoke tests only: draw releases from this range (no target images allowed)")
     p.add_argument("--group-seed", type=int, default=0, help="seed of the --target-range draw")
     p.add_argument("--local-lr", default="auto", help="a number, or auto: the learning-rate rule pick")
-    p.add_argument("--lr-rule", default=LR_RULE)
+    p.add_argument("--lr-rule", default=None, help="default: the learning-rate rule file of each setting's dataset")
     p.add_argument("--restarts", type=int, default=2)
     p.add_argument("--iters", type=int, default=300, help="L-BFGS outer steps")
     p.add_argument("--cosine-iters", type=int, default=3000)

@@ -43,3 +43,21 @@ def test_trained_checkpoints_match_the_plan(k):
         assert checkpoints.verify(model, k, path) == checkpoints.TRAINED_SHA256[k]
     finally:
         os.chdir(cwd)
+
+
+CIFAR_META = {"in_channels": 3, "num_classes": 10, "input_size": 32}
+
+
+@pytest.mark.parametrize("k", [0, 1, 2])
+def test_cifar10_fresh_checkpoints_match_their_recorded_hash(k):
+    model = build_target(CIFAR_META, k, None)
+    assert checkpoints.verify(model, k, dataset="cifar10") == checkpoints.CIFAR10_FRESH_STATE_SHA256[k]
+
+
+def test_the_dataset_picks_the_table():
+    with pytest.raises(RuntimeError):
+        checkpoints.verify(build_target(CIFAR_META, 0, None), 0)  # CIFAR model vs MNIST table
+    with pytest.raises(RuntimeError):
+        checkpoints.verify(build_target(META, 0, None), 0, dataset="cifar10")
+    with pytest.raises(RuntimeError):
+        checkpoints.verify(build_target(CIFAR_META, 0, None), 0, "x_s{seed}.pt", dataset="cifar10")
