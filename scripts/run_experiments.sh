@@ -156,7 +156,8 @@ addons() {
   left=$((left + $("$PY" scripts/attack_multiclient.py --releases targets --settings cifar10-fresh --ns 2 \
            --es 1 5 --splits single multi --out "$out" --dry-run 2>/dev/null | grep -c '\.json$')))
   if [ "$left" -eq 0 ]; then
-    "$PY" scripts/analyze_addons.py && echo "add-ons done -> results/journal/addons_report.md"
+    "$PY" scripts/analyze_addons.py && "$PY" scripts/make_addon_figures.py \
+      && echo "add-ons done -> results/journal/addons_report.md"
   else
     echo "$left add-on tasks still to run: re-run 'scripts/run_experiments.sh addons'"
   fi
