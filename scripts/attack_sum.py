@@ -26,13 +26,19 @@ def match_images(recon, originals):
 
 def match_and_order(recon, originals):
     """Pair reconstructions with originals to maximize SSIM."""
+    records, ordered, _ = match_with_order(recon, originals)
+    return records, ordered
+
+
+def match_with_order(recon, originals):
+    """Match_and_order, plus order: ordered[j] = recon[order[j]] (target j <- slot order[j])."""
     k = len(originals)
     recon = torch.nan_to_num(recon, nan=0.0, posinf=1.0, neginf=0.0)
     scores = [[metrics.all_metrics(recon[i], originals[j]) for j in range(k)] for i in range(k)]
     rows, cols = linear_sum_assignment(np.array([[s["ssim"] for s in row] for row in scores]), maximize=True)
     by_original = {int(j): int(i) for i, j in zip(rows, cols)}
     order = [by_original[j] for j in range(k)]
-    return [scores[order[j]][j] for j in range(k)], recon[order]
+    return [scores[order[j]][j] for j in range(k)], recon[order], order
 
 
 def _init_worker():

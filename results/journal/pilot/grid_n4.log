@@ -1,0 +1,39 @@
+W1121 08:03:00.458164 25382 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+32 tasks, 0 already done, 32 to run
+W1121 08:03:02.533209 25388 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 08:03:02.533327 25389 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 08:03:02.535343 25390 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 08:03:02.535450 25387 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+1/32 mnist-fresh N=4 E=1 1x4 cosine r0: SSIM 0.578, drift 1.000, losses ['0.000106', '0.000113'], 31s, wall 33s
+2/32 mnist-fresh N=4 E=5 1x4 cosine r0: SSIM 0.026, drift 0.294, losses ['0.257', '0.257'], 31s, wall 33s
+3/32 mnist-fresh N=4 E=1 1x4 lbfgs r0: SSIM 0.961, drift 1.000, losses ['1.55e-06', '1.33e-06'], 44s, wall 46s
+4/32 mnist-fresh N=4 E=5 4x1 lbfgs r0: SSIM 0.059, drift 0.294, losses ['64.6', '0.115'], 41s, wall 73s
+5/32 mnist-fresh N=4 E=5 4x1 cosine r0: SSIM 0.585, drift 0.294, losses ['0.000104', '0.000104'], 34s, wall 80s
+6/32 mnist-fresh N=4 E=5 1x4 lbfgs r0: SSIM 0.039, drift 0.294, losses ['7.39', '7.65'], 79s, wall 81s
+7/32 mnist-fresh N=4 E=1 1x4 cosine r1: SSIM 0.613, drift 1.000, losses ['7.48e-05', '7.44e-05'], 34s, wall 115s
+8/32 mnist-fresh N=4 E=1 1x4 lbfgs r1: SSIM 0.739, drift 1.000, losses ['4.09e-06', '3.27e-06'], 39s, wall 119s
+9/32 mnist-fresh N=4 E=5 1x4 cosine r1: SSIM 0.026, drift 0.400, losses ['0.348', '0.348'], 33s, wall 152s
+10/32 mnist-fresh N=4 E=5 1x4 unrolled r0: SSIM 0.065, drift 0.294, losses ['0.0311', '0.061'], 155s, wall 188s
+11/32 mnist-fresh N=4 E=5 1x4 lbfgs r1: SSIM 0.026, drift 0.400, losses ['19.1', '18.9'], 81s, wall 196s
+12/32 mnist-fresh N=4 E=5 4x1 cosine r1: SSIM 0.618, drift 0.400, losses ['7.42e-05', '7.43e-05'], 33s, wall 229s
+13/32 mnist-fresh N=4 E=5 4x1 lbfgs r1: SSIM 0.038, drift 0.400, losses ['10.7', '10.8'], 82s, wall 270s
+14/32 mnist-fresh N=4 E=1 1x4 lbfgs r2: SSIM 1.000, drift 1.000, losses ['2.02e-07', '2.79e-07'], 22s, wall 292s
+15/32 mnist-fresh N=4 E=5 1x4 unrolled r1: SSIM 0.107, drift 0.400, losses ['0.0142', '0.00267'], 156s, wall 308s
+16/32 mnist-fresh N=4 E=5 4x1 unrolled r0: SSIM 0.559, drift 0.294, losses ['0.000111', '0.000109'], 239s, wall 312s
+17/32 mnist-fresh N=4 E=1 1x4 cosine r2: SSIM 0.958, drift 1.000, losses ['0.000148', '0.000155'], 34s, wall 326s
+18/32 mnist-fresh N=4 E=5 1x4 cosine r2: SSIM 0.069, drift 0.794, losses ['0.119', '0.119'], 35s, wall 347s
+19/32 mnist-fresh N=4 E=5 1x4 lbfgs r2: SSIM 0.062, drift 0.794, losses ['2.9', '3.23'], 86s, wall 394s
+20/32 mnist-fresh N=4 E=5 4x1 cosine r2: SSIM 0.953, drift 0.794, losses ['0.000148', '0.000153'], 37s, wall 430s
+21/32 mnist-fresh N=4 E=5 4x1 lbfgs r2: SSIM 0.080, drift 0.794, losses ['0.285', '8.07'], 87s, wall 434s
+22/32 mnist-fresh N=4 E=1 1x4 lbfgs r3: SSIM 0.997, drift 1.000, losses ['4.73e-07', '3.75e-07'], 28s, wall 462s
+23/32 mnist-fresh N=4 E=5 4x1 unrolled r1: SSIM 0.618, drift 0.400, losses ['7.45e-05', '7.48e-05'], 251s, wall 480s
+24/32 mnist-fresh N=4 E=5 1x4 unrolled r2: SSIM 0.058, drift 0.794, losses ['0.0383', '0.0435'], 166s, wall 492s
+25/32 mnist-fresh N=4 E=1 1x4 cosine r3: SSIM 0.904, drift 1.000, losses ['0.000122', '0.00012'], 35s, wall 497s
+26/32 mnist-fresh N=4 E=5 1x4 cosine r3: SSIM 0.036, drift 0.668, losses ['0.185', '0.185'], 35s, wall 527s
+27/32 mnist-fresh N=4 E=5 1x4 lbfgs r3: SSIM 0.035, drift 0.668, losses ['7.82', '7.7'], 86s, wall 566s
+28/32 mnist-fresh N=4 E=5 4x1 cosine r3: SSIM 0.917, drift 0.668, losses ['0.00012', '0.00012'], 35s, wall 601s
+29/32 mnist-fresh N=4 E=5 4x1 lbfgs r3: SSIM 0.023, drift 0.668, losses ['0.449', '0.339'], 86s, wall 612s
+30/32 mnist-fresh N=4 E=5 1x4 unrolled r3: SSIM 0.054, drift 0.668, losses ['0.0832', '0.0467'], 156s, wall 653s
+31/32 mnist-fresh N=4 E=5 4x1 unrolled r2: SSIM 0.955, drift 0.794, losses ['0.000148', '0.000156'], 238s, wall 669s
+32/32 mnist-fresh N=4 E=5 4x1 unrolled r3: SSIM 0.905, drift 0.668, losses ['0.00012', '0.00012'], 176s, wall 777s
+finished 32 tasks in 777s

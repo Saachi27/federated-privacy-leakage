@@ -12,10 +12,9 @@ from scipy import stats
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scripts.attack_sum import match_images
-from src import metrics, splits
+from src import metrics, release_risk as rr, splits
 from src.data import load_datasets
 
-POOL_START = splits.LEGACY.prior.start  # old name; the prior now comes from --splits
 METRICS = ("ssim", "ssim_zeropad", "psnr", "mse")
 
 
@@ -32,6 +31,92 @@ def score(fakes, targets):
     return {m: float(np.mean([r[m] for r in recs])) for m in METRICS}
 
 
+N_DRAWS = 5
+
+
+def same_class_seed(n, r):
+    return 50000 + 1000 * n + r
+
+
+def _score_summary(out):
+    return {"ssims": out["ssims"], "mean_ssim": out["mean_ssim"], "any_pass": out["any_pass"],
+            "hit": out.get("hit"), "picks": out.get("picks")}
+
+
+def release_baseline(n, r, targets, labels, release_ids, class_avg, prior_by_class, image_of, gallery,
+                     average=None, n_draws=N_DRAWS):
+    """Baselines for one release."""
+    labels = [int(y) for y in labels]
+    ca = rr.score_release(targets, class_avg[labels], labels, release_ids, gallery, recon_classes=labels)
+    rng = np.random.default_rng(same_class_seed(n, r))
+    draws = []
+    for _ in range(n_draws):
+        ids = [int(rng.choice(prior_by_class[y])) for y in labels]
+        guesses = torch.stack([image_of(i) for i in ids])
+        out = rr.score_release(targets, guesses, labels, release_ids, gallery, recon_classes=labels,
+                               guess_ids=ids)
+        draws.append({"ids": ids, **_score_summary(out)})
+    a_r = ca["mean_ssim"]
+    s_r = float(np.mean([d["mean_ssim"] for d in draws]))
+    same_pass = float(np.mean([d["any_pass"] for d in draws]))
+    same_hit = float(np.mean([d["hit"] for d in draws]))
+    rec = {"n": n, "release": r, "image_indices": [int(i) for i in release_ids], "labels": labels,
+           "class_average": _score_summary(ca), "same_class_draws": draws,
+           "A": a_r, "S": s_r, "b": max(a_r, s_r),
+           "any_pass_class_average": ca["any_pass"], "any_pass_same_share": same_pass,
+           "baseline_any_pass": max(float(ca["any_pass"]), same_pass),
+           "hit_class_average": ca["hit"], "hit_same_share": same_hit,
+           "hit_exact_chance": rr.chance_hit(labels, gallery.sizes()),
+           "baseline_hit": max(float(ca["hit"]), same_hit), "seed": same_class_seed(n, r)}
+    context = {"all black": torch.zeros_like(targets)}
+    if average is not None:
+        context["average digit"] = average.expand_as(targets)
+    g = torch.Generator().manual_seed(60000 + 1000 * n + r)
+    context["random noise"] = torch.rand(targets.shape, generator=g)
+    rec["context_mean_ssim"] = {k: rr.score_release(targets, v, labels)["mean_ssim"] for k, v in context.items()}
+    return rec
+
+
+def journal_main(args):
+    from scripts.attack_multiclient import pilot_releases
+    split = splits.load_split_file(args.dataset)  # asserts the four lists are disjoint
+    split_path = splits.SPLIT_FILE.format(dataset=args.dataset)
+    train_ds, test_ds, _ = load_datasets(args.dataset, normalize=False)
+    test_labels = np.array([int(y) for y in test_ds.targets])
+    prior = sorted(split.prior)
+    prior_by_class = splits.pool_by_class(test_labels, prior)
+    forbidden = set(split.tuning) | set(split.retired) | set(split.targets)
+    assert not forbidden & set(prior)
+    train = torch.as_tensor(np.asarray(train_ds.data)).float() / 255.0
+    train = train.unsqueeze(1) if train.dim() == 3 else train.permute(0, 3, 1, 2)
+    train_labels = torch.as_tensor(np.array([int(y) for y in train_ds.targets]))
+    class_avg = torch.stack([train[train_labels == c].mean(0) for c in range(10)])
+    test_images = torch.stack([test_ds[i][0] for i in range(len(test_ds))])
+    gallery = rr.Gallery(test_images, test_labels, np.arange(len(test_ds)))
+
+    out = {"dataset": args.dataset, "split_file": split_path, "split_sha256": splits.file_sha256(split_path),
+           "releases_from": args.releases, "n_draws": N_DRAWS, "gallery_sizes": gallery.sizes(),
+           "rule": "label-aware baseline per release", "releases": {}}
+    for n in args.ns:
+        rels = split.releases(n) if args.releases == "targets" else \
+            [p["image_indices"] for p in pilot_releases(n)]
+        recs = []
+        for r, idx in enumerate(rels):
+            rec = release_baseline(n, r, test_images[idx], test_labels[idx].tolist(), idx, class_avg,
+                                   prior_by_class, lambda i: test_images[i], gallery, train.mean(0))
+            assert all(i in set(prior) for d in rec["same_class_draws"] for i in d["ids"])
+            recs.append(rec)
+        out["releases"][str(n)] = recs
+        print(f"N = {n}: {len(recs)} releases, mean b {np.mean([x['b'] for x in recs]):.3f}, "
+              f"mean baseline hit {np.mean([x['baseline_hit'] for x in recs]):.3f}", flush=True)
+    path = args.out_json or ("results/journal/baselines_mnist.json" if args.releases == "targets"
+                             else "results/journal/pilot/baselines_pilot.json")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(out, f, indent=1)
+    print(f"Saved -> {path}")
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--dataset", choices=["mnist", "cifar10"], default="mnist")
@@ -44,8 +129,14 @@ def main():
     p.add_argument("--ks", nargs="+", type=int, default=[1, 2, 4, 8, 16])
     p.add_argument("--out", default="results/baselines")
     p.add_argument("--save-guesses", default=None, help="optional .npz for the label-aware guess images")
+    p.add_argument("--journal", action="store_true", help="per-release journal baselines")
+    p.add_argument("--releases", choices=["targets", "pilot"], default="targets", help="journal mode only")
+    p.add_argument("--ns", nargs="+", type=int, default=[2, 4], help="journal mode only")
+    p.add_argument("--out-json", default=None, help="journal mode output")
     args = p.parse_args()
     torch.set_num_threads(2)
+    if args.journal:
+        return journal_main(args)
     split = splits.get(args.splits)
     first = split.targets.start if args.first_image is None else args.first_image
     num = args.num_images

@@ -4,17 +4,55 @@ import os
 import sys
 
 import numpy as np
+import pytest
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 from src import splits
 
 
-def test_journal_splits_are_disjoint():
-    assert splits.JOURNAL.is_disjoint(), splits.JOURNAL.overlaps()
-    used = [set(s.indices()) for s in splits.JOURNAL.spans().values()]
-    assert sum(len(u) for u in used) == len(set().union(*used))
-    assert all(len(u) > 0 for u in used)
+def test_journal_splits_follow_plan_section_2():
+    j = splits.JOURNAL
+    order = np.random.default_rng(20261121).permutation(np.arange(82, 10000))
+    assert list(j.tuning) == list(range(50)) and list(j.retired) == list(range(50, 82))
+    assert list(j.order) == order.tolist()
+    assert list(j.targets) == order[:180].tolist() and list(j.prior) == order[180:].tolist()
+    assert j.targets_for(2) == order[0:60].tolist() and j.targets_for(4) == order[60:180].tolist()
+    r2, r4 = j.releases(2), j.releases(4)
+    assert len(r2) == len(r4) == 30
+    assert all(r2[r] == [order[2 * r], order[2 * r + 1]] for r in range(30))
+    assert all(r4[r] == order[60 + 4 * r:60 + 4 * r + 4].tolist() for r in range(30))
+    # Releases never share an image, inside an N or across N.
+    flat = [i for rel in r2 + r4 for i in rel]
+    assert len(flat) == len(set(flat)) == 180
+
+
+def test_journal_splits_are_disjoint_and_cover_the_test_set():
+    lists = splits.JOURNAL.lists()
+    splits.assert_disjoint(lists)
+    assert [len(lists[k]) for k in splits.ROLES] == [50, 32, 180, 9738]
+    bad = dict(lists, prior=lists["prior"] + [lists["targets"][0]])
+    with pytest.raises(AssertionError):
+        splits.assert_disjoint(bad)
+    with pytest.raises(AssertionError):
+        splits.assert_disjoint(dict(lists, prior=lists["prior"][1:]))  # one image left out
+
+
+def test_split_file_is_written_once_and_reads_back(tmp_path):
+    path = str(tmp_path / "splits_mnist.json")
+    written, sha = splits.write_split_file("mnist", path)
+    assert written == path and sha == splits.file_sha256(path)
+    with pytest.raises(FileExistsError):
+        splits.write_split_file("mnist", path)
+    assert splits.load_split_file("mnist", path) == splits.JOURNAL
+
+
+def test_committed_split_file_matches_the_seed():
+    path = os.path.join(ROOT, "results", "journal", "splits_mnist.json")
+    if not os.path.exists(path):
+        pytest.skip("split file not written yet")
+    assert splits.load_split_file("mnist", path) == splits.JOURNAL
 
 
 def test_legacy_splits_match_the_old_hard_coded_ranges():
@@ -45,3 +83,9 @@ def test_pool_by_class_stays_inside_the_span():
     labels = np.array([0, 1, 0, 1, 0, 1, 0, 1])
     pools = splits.pool_by_class(labels, splits.Span(4, None), num_classes=2)
     assert pools[0].tolist() == [4, 6] and pools[1].tolist() == [5, 7]
+
+
+def test_pool_by_class_takes_an_index_list():
+    labels = np.array([0, 1, 0, 1, 0, 1, 0, 1])
+    pools = splits.pool_by_class(labels, [7, 2, 4], num_classes=2)
+    assert pools[0].tolist() == [2, 4] and pools[1].tolist() == [7]

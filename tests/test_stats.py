@@ -124,3 +124,36 @@ def test_outcome_inconclusive_when_interval_crosses_margin():
 def test_outcome_margin_is_strict():
     assert stats.classify_outcome(0.3, 0.2, 0.15, -0.05, 0.03) == stats.INCONCLUSIVE
     assert stats.classify_outcome(0.3, 0.2, 0.15, -0.2, -0.05) == stats.INCONCLUSIVE
+
+
+def test_outcome_more():
+    assert stats.classify_outcome(0.3, 0.1, 0.4, 0.1, 0.3) == stats.MORE
+
+
+def test_outcome_more_needs_multi_client_above_baseline():
+    # Interval above +margin, but only the single-client split beats the baseline.
+    assert stats.classify_outcome(0.3, 0.1, -0.01, 0.1, 0.3) == stats.INCONCLUSIVE
+
+
+def test_outcome_more_margin_is_strict():
+    assert stats.classify_outcome(0.3, 0.1, 0.4, 0.05, 0.3) == stats.INCONCLUSIVE
+
+
+def test_outcome_more_comes_after_neither_and_not_tested():
+    assert stats.classify_outcome(-0.1, 0.1, 0.4, 0.1, 0.3) == stats.NOT_TESTED
+    assert stats.classify_outcome(0.3, -0.1, -0.1, 0.1, 0.3) == stats.NEITHER
+
+
+def test_outcome_order_is_the_locked_order():
+    assert stats.OUTCOME_ORDER == ["not tested", "neither above baseline", "less", "more", "same",
+                                   "inconclusive"]
+
+
+def test_too_few_releases_per_checkpoint_gives_no_label():
+    s = np.repeat([0, 1, 2], 10)
+    assert stats.enough_releases(s) and stats.releases_per_checkpoint(s) == {0: 10, 1: 10, 2: 10}
+    assert stats.enough_releases(np.repeat([0, 1, 2], 5))
+    assert not stats.enough_releases(np.array([0] * 10 + [1] * 10 + [2] * 4))
+    assert not stats.enough_releases(np.repeat([0, 1], 10), checkpoints=[0, 1, 2])  # checkpoint 2 missing
+    assert not stats.enough_releases(np.array([], int))
+    assert stats.classify_outcome(0.3, 0.2, 0.15, -0.04, 0.03, enough=False) == stats.DESCRIPTIVE

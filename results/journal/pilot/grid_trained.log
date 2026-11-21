@@ -1,0 +1,23 @@
+W1121 08:15:59.504817 26788 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+16 tasks, 0 already done, 16 to run
+W1121 08:16:01.666936 26794 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 08:16:01.667181 26792 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 08:16:01.667285 26793 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 08:16:01.667326 26795 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+1/16 mnist-trained N=2 E=1 1x2 lbfgs r0: SSIM -0.008, drift 1.000, losses ['269', '32.2'], 3s, wall 6s
+2/16 mnist-trained N=2 E=5 1x2 lbfgs r0: SSIM 0.017, drift 1.000, losses ['371', '122'], 8s, wall 10s
+3/16 mnist-trained N=2 E=5 2x1 lbfgs r0: SSIM 0.089, drift 1.000, losses ['141', '0.00069'], 10s, wall 21s
+4/16 mnist-trained N=2 E=1 1x2 cosine r0: SSIM 0.541, drift 1.000, losses ['0.00105', '0.000715'], 19s, wall 21s
+5/16 mnist-trained N=2 E=5 1x2 cosine r0: SSIM 0.547, drift 1.000, losses ['0.00368', '0.0042'], 19s, wall 21s
+6/16 mnist-trained N=2 E=1 1x2 lbfgs r1: SSIM 0.610, drift 1.000, losses ['132', '7.1e-07'], 11s, wall 32s
+7/16 mnist-trained N=2 E=5 2x1 cosine r0: SSIM 0.573, drift 1.000, losses ['0.00419', '0.00508'], 20s, wall 40s
+8/16 mnist-trained N=2 E=1 1x2 cosine r1: SSIM 0.590, drift 1.000, losses ['0.00279', '0.00285'], 20s, wall 52s
+9/16 mnist-trained N=2 E=5 1x2 lbfgs r1: SSIM 0.077, drift 0.999, losses ['262', '0.000201'], 20s, wall 60s
+10/16 mnist-trained N=2 E=5 1x2 cosine r1: SSIM 0.651, drift 0.999, losses ['0.00716', '0.0071'], 20s, wall 72s
+11/16 mnist-trained N=2 E=5 1x2 unrolled r0: SSIM 0.234, drift 1.000, losses ['0.238', '0.28'], 90s, wall 95s
+12/16 mnist-trained N=2 E=5 2x1 lbfgs r1: SSIM 0.429, drift 0.999, losses ['38.7', '1.87e-06'], 28s, wall 100s
+13/16 mnist-trained N=2 E=5 2x1 cosine r1: SSIM 0.678, drift 0.999, losses ['0.00649', '0.0061'], 20s, wall 116s
+14/16 mnist-trained N=2 E=5 2x1 unrolled r0: SSIM 0.665, drift 1.000, losses ['0.00296', '0.00315'], 116s, wall 137s
+15/16 mnist-trained N=2 E=5 1x2 unrolled r1: SSIM 0.141, drift 0.999, losses ['0.242', '0.202'], 89s, wall 149s
+16/16 mnist-trained N=2 E=5 2x1 unrolled r1: SSIM 0.792, drift 0.999, losses ['0.00474', '0.00419'], 94s, wall 194s
+finished 16 tasks in 194s

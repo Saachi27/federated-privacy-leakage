@@ -112,13 +112,28 @@ study() {
 }
 
 multiclient() {
-  # Client-split study.
-  local out=results/multiclient
+  # The client-split study on the target releases.
+  local out=results/journal/targets
   mkdir -p "$out"
-  step "$out/lr_grid.log" "$PY" scripts/attack_multiclient.py --lr-grid --out "$out"
-  step "$out/grid_$(date +%Y%m%d_%H%M%S).log" "$PY" scripts/attack_multiclient.py --cut "${MC_CUT:-0}" \
-    --workers "$JOBS" --out "$out"
-  "$PY" scripts/attack_multiclient.py --summary --out "$out" > "$out/summary.md" && echo "summary -> $out/summary.md"
+  step "$out/grid_$(date +%Y%m%d_%H%M%S).log" "$PY" scripts/attack_multiclient.py --releases targets \
+    --cut "${MC_CUT:-0}" --workers "$JOBS" --out "$out"
+  "$PY" scripts/attack_multiclient.py --summary --cut "${MC_CUT:-0}" --out "$out" > "$out/summary.md" \
+    && echo "summary -> $out/summary.md"
+}
+
+pilot() {
+  # Tuning images only: the learning-rate rule, TV tuning and the objective rule
+  local p=results/journal/pilot
+  mkdir -p "$p"
+  [ -f "$p/lr_rule.json" ] && echo "skip $p/lr_rule.json" || \
+    step "$p/lr_rule.log" "$PY" scripts/attack_multiclient.py --lr-grid
+  for st in mnist-fresh mnist-trained; do
+    step "$p/tv_$st.log" "$PY" scripts/tune_journal.py --setting "$st" --workers "$JOBS"
+  done
+  step "$p/grid_$(date +%Y%m%d_%H%M%S).log" "$PY" scripts/attack_multiclient.py --releases pilot \
+    --settings mnist-fresh --ns 2 --workers "$JOBS"
+  "$PY" scripts/attack_multiclient.py --summary --releases pilot --settings mnist-fresh --ns 2 \
+    > "$p/grid_summary.md" && echo "summary -> $p/grid_summary.md"
 }
 
 core() {
@@ -152,7 +167,8 @@ case "${1:-all}" in
   core) core ;;
   extras) extras ;;
   all) study; core; extras ;;
+  pilot) pilot; exit 0 ;;
   multiclient) multiclient; exit 0 ;;
-  *) echo "usage: $0 [study|core|extras|all|multiclient]"; exit 2 ;;
+  *) echo "usage: $0 [study|core|extras|all|pilot|multiclient]"; exit 2 ;;
 esac
 "$PY" scripts/summarize_results.py > /dev/null && echo "summary -> results/summary.md"

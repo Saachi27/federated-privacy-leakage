@@ -45,12 +45,21 @@ def cosine(a, b):
     return float(dot / (na * nb + 1e-30))
 
 
-def drift_cosine(model, images, labels, local_steps, local_lr):
-    """Cosine between the N x 1 release and the 1 x N release on the same images."""
+def norm(a):
+    return float(torch.sqrt(sum((x ** 2).sum() for x in a)))
+
+
+def drift(model, images, labels, local_steps, local_lr):
+    """(drift cosine, norm ratio) of the N x 1 and 1 x N releases on the same images."""
     n = len(images)
     multi = make_release(model, images, labels, (n, 1), local_steps, local_lr)
     single = make_release(model, images, labels, (1, n), local_steps, local_lr)
-    return cosine(multi, single)
+    return cosine(multi, single), norm(multi) / norm(single)
+
+
+def drift_cosine(model, images, labels, local_steps, local_lr):
+    """The drift cosine alone (see drift)."""
+    return drift(model, images, labels, local_steps, local_lr)[0]
 
 
 def simulate_release(model, dummy, labels, split, local_steps, local_lr):
@@ -127,14 +136,18 @@ def reconstruct_unrolled(model, observed, shape, labels, split, local_steps, loc
         if best is None or _better(loss, losses[best[0]]):
             best = (r, recon)
     return best[1], {"label": list(labels_t.tolist()), "final_loss": losses[best[0]],
-                     "restart_losses": losses, "best_restart": best[0]}
+                     "restart_losses": losses, "best_restart": best[0],
+                     "restart_seeds": [seed + r for r in range(restarts)]}
+
+
+def _key(loss):
+    """A NaN or infinite loss counts as +inf."""
+    return loss if loss == loss and loss != float("-inf") else float("inf")
 
 
 def _better(a, b):
-    """A < b, with NaN counted as worst."""
-    if a != a:
-        return False
-    return b != b or a < b
+    """A is strictly lower than b, NaN and inf counted as +inf; so a tie keeps the earlier restart."""
+    return _key(a) < _key(b)
 
 
 def l2_loss(model, dummy, labels, observed):
@@ -159,7 +172,7 @@ def attack_one(model, observed, shape, labels, kind, num_classes=10, iters=300, 
     for r in range(restarts):
         if kind == "lbfgs":
             recon, _ = attack.reconstruct(model, observed, shape, num_classes, label=labels,
-                                          iters=iters, seed=seed + r)
+                                          iters=iters, seed=seed + r, restarts=1)
             loss = l2_loss(model, recon, labels, observed) if torch.isfinite(recon).all() else float("nan")
         elif kind == "cosine":
             recon, _ = attack.reconstruct_cosine(model, observed, shape, labels, iters=cosine_iters,
@@ -171,5 +184,6 @@ def attack_one(model, observed, shape, labels, kind, num_classes=10, iters=300, 
         if best is None or _better(loss, losses[best[0]]):
             best = (r, recon)
     return best[1], {"label": labels, "final_loss": losses[best[0]],
-                     "restart_losses": losses, "best_restart": best[0]}
+                     "restart_losses": losses, "best_restart": best[0],
+                     "restart_seeds": [seed + r for r in range(restarts)]}
 

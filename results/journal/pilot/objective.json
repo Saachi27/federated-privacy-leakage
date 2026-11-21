@@ -1,0 +1,13 @@
+{
+ "rule": "cosine is the main objective unless basic is higher by 0.02 or more",
+ "basic_mean_ssim_T-B": 0.05060865256382385,
+ "cosine_mean_ssim_T-B": 0.4524631862083576,
+ "cosine_tv_T-B": 0.001,
+ "basic_by_split_T-B": {
+  "1x2": 0.04057223868827956,
+  "2x1": 0.060645066439368144
+ },
+ "info_basic_mean_ssim_T-A": 0.9572499406834444,
+ "info_cosine_mean_ssim_T-A": 0.8366923241895469,
+ "main_objective": "cosine"
+}

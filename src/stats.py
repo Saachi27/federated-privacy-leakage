@@ -7,8 +7,12 @@ MARGIN = 0.05
 NOT_TESTED = "not tested"
 NEITHER = "neither above baseline"
 LESS = "less"
+MORE = "more"
 SAME = "same"
 INCONCLUSIVE = "inconclusive"
+DESCRIPTIVE = "descriptive only"
+OUTCOME_ORDER = [NOT_TESTED, NEITHER, LESS, MORE, SAME, INCONCLUSIVE]
+MIN_PER_CHECKPOINT = 5
 
 
 def _diffs_by_stratum(a, b, strata):
@@ -85,8 +89,24 @@ def beats_baseline(lo95):
     return bool(np.isfinite(lo95) and lo95 > 0)
 
 
-def classify_outcome(control_lo95, single_lo95, multi_lo95, gap_lo90, gap_hi90, margin=MARGIN):
+def releases_per_checkpoint(strata):
+    """{checkpoint: number of releases}."""
+    values, counts = np.unique(np.asarray(strata), return_counts=True)
+    return {v.item(): int(c) for v, c in zip(values, counts)}
+
+
+def enough_releases(strata, minimum=MIN_PER_CHECKPOINT, checkpoints=None):
+    """True if every checkpoint has at least `minimum` releases."""
+    counts = releases_per_checkpoint(strata) if len(strata) else {}
+    wanted = list(counts) if checkpoints is None else list(checkpoints)
+    return bool(wanted) and all(counts.get(k, 0) >= minimum for k in wanted)
+
+
+def classify_outcome(control_lo95, single_lo95, multi_lo95, gap_lo90, gap_hi90, margin=MARGIN,
+                     enough=True):
     """Main-endpoint outcome, checked in the locked order."""
+    if not enough:
+        return DESCRIPTIVE
     single, multi = beats_baseline(single_lo95), beats_baseline(multi_lo95)
     if not beats_baseline(control_lo95):
         return NOT_TESTED
@@ -94,6 +114,8 @@ def classify_outcome(control_lo95, single_lo95, multi_lo95, gap_lo90, gap_hi90, 
         return NEITHER
     if gap_hi90 < -margin and single:
         return LESS
+    if gap_lo90 > margin and multi:
+        return MORE
     if -margin < gap_lo90 and gap_hi90 < margin and single and multi:
         return SAME
     return INCONCLUSIVE

@@ -91,18 +91,25 @@ class Gallery:
             self._state[c] = _prepare(self.similarity, self.pools[c])
         return self._state[c]
 
-    def top1(self, queries, classes):
+    def top1(self, queries, classes, exclude_ids=None):
         """Gallery id of the best match for each query within its class."""
         queries = torch.as_tensor(np.asarray(queries, dtype=np.float32)) if not torch.is_tensor(queries) \
             else queries.float()
         classes = [int(c) for c in classes]
+        exclude_ids = [None] * len(classes) if exclude_ids is None else list(exclude_ids)
+        assert len(exclude_ids) == len(classes)
         picks = [None] * len(classes)
         for c in sorted(set(classes)):
             rows = [i for i, ci in enumerate(classes) if ci == c]
-            scores = _score(self.similarity, queries[rows], self.state(c))
-            best = scores.argmax(dim=1).tolist()
-            for i, b in zip(rows, best):
-                picks[i] = int(self.ids[c][b])
+            scores = _score(self.similarity, queries[rows], self.state(c)).double()
+            ids = np.asarray(self.ids[c])
+            for row, i in enumerate(rows):
+                sc = scores[row].clone()
+                if exclude_ids[i] is not None:
+                    sc[torch.as_tensor(ids == int(exclude_ids[i]))] = -float("inf")
+                best = sc.max()
+                tied = np.flatnonzero((sc == best).numpy())
+                picks[i] = int(ids[tied].min())
         return picks
 
 
@@ -132,19 +139,28 @@ def matched_ssims(recons, targets, matched=False):
     return match(recons, targets)
 
 
+def chance_hit(release_labels, gallery_sizes):
+    """Exact hit chance of one uniform pick per image from its class gallery."""
+    labels = [int(c) for c in release_labels]
+    miss = 1.0
+    for c in labels:
+        miss *= 1.0 - labels.count(c) / gallery_sizes[c]
+    return 1.0 - miss
+
+
 def any_passes(ssims, threshold=PASS):
     return int(any(s >= threshold for s in ssims))
 
 
-def retrieval_hit(recons, recon_classes, release_ids, gallery):
+def retrieval_hit(recons, recon_classes, release_ids, gallery, exclude_ids=None):
     """1 if any reconstruction's top-1 gallery pick is one of the release's images."""
-    picks = gallery.top1(_tensor(recons), recon_classes)
+    picks = gallery.top1(_tensor(recons), recon_classes, exclude_ids)
     members = {int(i) for i in release_ids}
     return int(any(p in members for p in picks)), picks
 
 
 def score_release(targets, recons, labels, release_ids=None, gallery=None, recon_classes=None,
-                  matched=False, threshold=PASS):
+                  matched=False, threshold=PASS, guess_ids=None):
     """All three scores for one release."""
     ssims, ordered, order = matched_ssims(recons, targets, matched)
     out = {"mean_ssim": float(np.mean(ssims)), "ssims": [float(s) for s in ssims],
@@ -154,5 +170,6 @@ def score_release(targets, recons, labels, release_ids=None, gallery=None, recon
             classes = [int(labels[j]) for j in range(len(order))]
         else:
             classes = [int(recon_classes[order[j]]) for j in range(len(order))]
-        out["hit"], out["picks"] = retrieval_hit(ordered, classes, release_ids, gallery)
+        exclude = None if guess_ids is None else [guess_ids[order[j]] for j in range(len(order))]
+        out["hit"], out["picks"] = retrieval_hit(ordered, classes, release_ids, gallery, exclude)
     return out

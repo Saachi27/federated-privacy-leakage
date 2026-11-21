@@ -110,3 +110,42 @@ def test_unrolled_attack_recovers_one_mnist_image():
     observed = mc.make_release(model, x, y, (1, 1), local_steps=5, local_lr=0.1)
     recon, _ = mc.reconstruct_unrolled(model, observed, x.shape, y, (1, 1), 5, 0.1, iters=400, tv_weight=1e-3)
     assert metrics.ssim(recon[0], x[0]) > 0.8
+
+
+def test_restart_choice_counts_nan_and_inf_as_worst_and_ties_keep_the_first():
+    nan, inf = float("nan"), float("inf")
+    assert mc._better(0.1, 0.2) and not mc._better(0.2, 0.1)
+    assert mc._better(5.0, nan) and mc._better(5.0, inf)
+    assert not mc._better(nan, 5.0) and not mc._better(inf, 5.0)
+    # Both +inf (any mix of NaN and inf): keep restart 0.
+    assert not mc._better(inf, nan) and not mc._better(nan, inf) and not mc._better(nan, nan)
+    assert not mc._better(0.3, 0.3)
+
+
+def test_attackers_report_their_restart_seeds_and_call_reconstruct_once_per_restart(monkeypatch):
+    model = _model()
+    x, y = _batch(2)
+    observed = mc.make_release(model, x, y, (2, 1), local_steps=2, local_lr=0.1)
+    calls = []
+    real = attack.reconstruct
+
+    def spy(*a, **kw):
+        calls.append(kw.get("restarts"))
+        return real(*a, **kw)
+    monkeypatch.setattr(attack, "reconstruct", spy)
+    _, info = mc.attack_one(model, observed, x.shape, y, "lbfgs", iters=2, seed=40, restarts=2)
+    assert calls == [1, 1] and info["restart_seeds"] == [40, 41] and len(info["restart_losses"]) == 2
+    _, info = mc.reconstruct_unrolled(model, observed, x.shape, y, (2, 1), 2, 0.1, iters=2, seed=40, restarts=2)
+    assert info["restart_seeds"] == [40, 41]
+
+
+def test_drift_reports_cosine_and_norm_ratio():
+    model = _model(double=True)
+    x, y = _batch(2, double=True)
+    cos1, ratio1 = mc.drift(model, x, y, local_steps=1, local_lr=0.3)
+    assert abs(cos1 - 1) < 1e-9 and abs(ratio1 - 1) < 1e-9
+    cos5, ratio5 = mc.drift(model, x, y, local_steps=5, local_lr=0.3)
+    multi = mc.make_release(model, x, y, (2, 1), 5, 0.3)
+    single = mc.make_release(model, x, y, (1, 2), 5, 0.3)
+    assert cos5 == pytest.approx(mc.cosine(multi, single))
+    assert ratio5 == pytest.approx(mc.norm(multi) / mc.norm(single))

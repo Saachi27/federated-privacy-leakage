@@ -15,7 +15,7 @@ from src import splits
 from src.data import load_datasets
 
 NUM = 25  # scripts/evaluate.py --dataset cifar10
-SPLITS = {"legacy": splits.LEGACY_CIFAR10_BASELINE, "journal": splits.JOURNAL}
+SPLITS = {"legacy": splits.LEGACY_CIFAR10_BASELINE}
 
 
 def main():

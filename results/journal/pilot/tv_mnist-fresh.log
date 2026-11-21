@@ -1,0 +1,66 @@
+W1121 02:36:59.895447 44015 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+mnist-fresh first pass: 456 tasks, 0 done, 456 to run
+W1121 02:37:03.345592 44023 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 02:37:03.348374 44022 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 02:37:03.384584 44024 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 02:37:03.393322 44025 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+  10/456 done, wall 368s
+  20/456 done, wall 790s
+  30/456 done, wall 1704s
+  40/456 done, wall 2329s
+  50/456 done, wall 2960s
+  60/456 done, wall 3616s
+  70/456 done, wall 4246s
+  80/456 done, wall 4757s
+  90/456 done, wall 5238s
+  100/456 done, wall 6058s
+  110/456 done, wall 6691s
+W1121 04:38:16.151932 90863 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+mnist-fresh first pass: 456 tasks, 119 done, 337 to run
+W1121 04:38:28.466423 90890 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 04:38:28.466618 90891 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 04:38:28.466592 90892 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1121 04:38:28.466425 90893 torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+  10/337 done, wall 646s
+  20/337 done, wall 1005s
+  30/337 done, wall 1437s
+  40/337 done, wall 1741s
+  50/337 done, wall 2044s
+  60/337 done, wall 2160s
+  70/337 done, wall 2260s
+  80/337 done, wall 2314s
+  90/337 done, wall 2365s
+  100/337 done, wall 2412s
+  110/337 done, wall 2473s
+  120/337 done, wall 2518s
+  130/337 done, wall 2579s
+  140/337 done, wall 2623s
+  150/337 done, wall 2685s
+  160/337 done, wall 2730s
+  170/337 done, wall 2795s
+  180/337 done, wall 2839s
+  190/337 done, wall 2901s
+  200/337 done, wall 2945s
+  210/337 done, wall 3008s
+  220/337 done, wall 3053s
+  230/337 done, wall 3117s
+  240/337 done, wall 3162s
+  250/337 done, wall 3226s
+  260/337 done, wall 3272s
+  270/337 done, wall 3335s
+  280/337 done, wall 3381s
+  290/337 done, wall 3446s
+  300/337 done, wall 3491s
+  310/337 done, wall 3553s
+  320/337 done, wall 3596s
+  330/337 done, wall 3660s
+  337/337 done, wall 3692s
+mnist-fresh T-A grid [1e-05, 0.0001, 0.001, 0.003, 0.01, 0.03, 0.1]: 84 tasks, 84 done, 0 to run
+mnist-fresh T-A: TV 1e-05 -> 0.7559, TV 0.0001 -> 0.8050, TV 0.001 -> 0.8367, TV 0.003 -> 0.7753, TV 0.01 -> 0.6301, TV 0.03 -> 0.3963, TV 0.1 -> 0.1880; chosen 0.001
+mnist-fresh T-B grid [1e-05, 0.0001, 0.001, 0.003, 0.01, 0.03, 0.1]: 168 tasks, 168 done, 0 to run
+mnist-fresh T-B: TV 1e-05 -> 0.4058, TV 0.0001 -> 0.4409, TV 0.001 -> 0.4525, TV 0.003 -> 0.4250, TV 0.01 -> 0.3605, TV 0.03 -> 0.2497, TV 0.1 -> 0.1363; chosen 0.001
+mnist-fresh T-C grid [1e-05, 0.0001, 0.001, 0.003, 0.01, 0.03, 0.1]: 168 tasks, 168 done, 0 to run
+mnist-fresh T-C: TV 1e-05 -> 0.5303, TV 0.0001 -> 0.5465, TV 0.001 -> 0.5741, TV 0.003 -> 0.5675, TV 0.01 -> 0.4878, TV 0.03 -> 0.3322, TV 0.1 -> 0.1751; chosen 0.001
+objective rule: basic L-BFGS: 36 tasks, 36 done, 0 to run
+objective rule: basic 0.0506 vs cosine 0.4525 -> cosine
+Saved -> results/journal/pilot/tv_mnist-fresh.json
