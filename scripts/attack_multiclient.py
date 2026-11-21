@@ -92,7 +92,9 @@ def cells(n, es, split_kinds, attackers):
             out += [(1, (1, n), a) for a in attackers if a in ATTACKER_1]
             continue
         for kind in split_kinds:
-            split = (1, n) if kind == "single" else (n, 1)
+            if kind == "pairs" and n < 4:
+                continue  # with N = 2 a 2-image client is the 1 x N split
+            split = {"single": (1, n), "multi": (n, 1), "pairs": (n // 2, 2)}[kind]
             out += [(e, split, a) for a in attackers]
     return out
 
@@ -413,8 +415,8 @@ def parse_args(argv=None):
                    default=["mnist-fresh", "mnist-trained"])
     p.add_argument("--ns", nargs="+", type=int, default=[2, 4], choices=[2, 4])
     p.add_argument("--es", nargs="+", type=int, default=[1, 5])
-    p.add_argument("--splits", nargs="+", choices=["single", "multi"], default=["single", "multi"],
-                   help="single = 1 x N, multi = N x 1 (E > 1 only)")
+    p.add_argument("--splits", nargs="+", choices=["single", "multi", "pairs"], default=["single", "multi"],
+                   help="single = 1 x N, multi = N x 1, pairs = N/2 x 2 (N >= 4; plan 21.A) (E > 1 only)")
     p.add_argument("--attackers", nargs="+", choices=ATTACKERS, default=ATTACKERS)
     p.add_argument("--cut", type=int, default=0, choices=range(len(CUTS) + 1),
                    help="apply the cut order up to this level (1: drop trained N=4, "

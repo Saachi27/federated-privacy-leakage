@@ -66,6 +66,12 @@ def test_cells_and_tv_keys():
     assert am.tv_key(5, "unrolled") == "T-C" and am.tv_key(5, "lbfgs") is None
 
 
+def test_pairs_split_is_two_images_per_client_and_skipped_at_n2():
+    assert am.cells(2, [5], ["pairs"], am.ATTACKERS) == []
+    c = am.cells(4, [5, 10], ["pairs"], ["unrolled"])
+    assert c == [(5, (2, 2), "unrolled"), (10, (2, 2), "unrolled")]
+
+
 def test_lr_rule_picks_the_smallest_passing_lr_or_the_edge():
     assert am.pick_lr({0.01: 0.99, 0.03: 0.95, 0.1: 0.89, 0.3: 0.7}) == (0.1, False)
     assert am.pick_lr({0.01: 0.99, 0.03: 0.98, 0.1: 0.97, 0.3: 0.95}) == (0.3, True)
