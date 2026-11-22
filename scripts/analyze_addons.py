@@ -30,10 +30,10 @@ def comparisons():
                     lambda k, s=s: (s, 4, 5, "2x2", k), lambda k, s=s: (s, 4, 5, "4x1", k)))
     s = "mnist-fresh"
     out.append(("21.B", "E = 10: 2×1 − 1×2", s, 2, (s, 2, 1, "1x2", MAIN_KIND),
-                lambda k: (s, 2, 10, "1x2", k), lambda k: (s, 2, 10, "2x1", k)))
+                lambda k, s=s: (s, 2, 10, "1x2", k), lambda k, s=s: (s, 2, 10, "2x1", k)))
     s = "cifar10-fresh"
     out.append(("21.C", "CIFAR-10: 2×1 − 1×2", s, 2, (s, 2, 1, "1x2", MAIN_KIND),
-                lambda k: (s, 2, 5, "1x2", k), lambda k: (s, 2, 5, "2x1", k)))
+                lambda k, s=s: (s, 2, 5, "1x2", k), lambda k, s=s: (s, 2, 5, "2x1", k)))
     return out
 
 
