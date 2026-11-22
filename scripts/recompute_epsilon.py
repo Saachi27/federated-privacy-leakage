@@ -10,6 +10,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from scripts.analyze_rq4 import rero_bound
 from scripts.attack_noise_sum import DEFAULT_SIGMAS, epsilon_for
 
 DELTA = 1e-5
@@ -20,6 +21,11 @@ PAPER_SIGMAS = [0.3, 1.0, 2.0]
 def epsilon_replace_one(sigma, delta=DELTA):
     """One-release epsilon when the clipped sum has sensitivity 2C (noise std sigma*C)."""
     return epsilon_for(sigma / 2, delta) if sigma > 0 else float("inf")
+
+
+def rero_replace_one(sigma, kappa):
+    """The ReRo bound when the clipped sum has sensitivity 2C: the add/remove bound at sigma/2."""
+    return rero_bound(sigma / 2, kappa) if sigma > 0 else 1.0
 
 
 def study_sigmas(root):
@@ -66,7 +72,7 @@ def main():
              "- **Mechanism:** clip each example's gradient to norm C, sum the K clipped gradients, add "
              "Gaussian noise N(0, (σC)²) once, divide by K (`scripts/attack_noise_sum.py`).",
              "- **Old ε (add/remove one example):** sensitivity C, so the accountant gets noise multiplier σ. "
-             "This is what the study JSON, `summary.md` and the Confluence paper report.",
+             "This is what the study JSON, `summary.md` and the earlier paper draft report.",
              "- **Replace-one ε:** one example is swapped for another, so K is unchanged and can be public. "
              "The sum moves by up to 2C, so the noise is σ/2 times the sensitivity: the accountant gets σ/2.",
              f"- Same accountant as before: Opacus RDP, sampling rate 1, one step, δ = {DELTA:g}. "
@@ -86,9 +92,25 @@ def main():
               "- For tiny σ, RDP ε grows like 1/σ², so halving σ multiplies ε by about 4. Near σ = 1 the "
               "ratio is smaller.",
               f"- Check: replace-one ε at σ = 2 ({fmt(epsilon_replace_one(2.0))}) equals the old ε at σ = 1.",
-              "- The illustrative reconstruction bound in the paper also uses σ; it is not recomputed here.",
-              "- The Confluence paper already says the replace-one values would need twice the σ; this table "
-              "gives those values."]
+              "- The earlier paper draft already said the replace-one values would need twice the σ; this "
+              "table gives those values."]
+    kappa_path = os.path.join(args.root, "kappa_mnist.json")
+    if os.path.exists(kappa_path):
+        with open(kappa_path) as f:
+            kappa = float(json.load(f)["kappa_hat"])
+        lines += ["", "## The illustrative reconstruction bound (MNIST)", "",
+                  "ReRo bound for one release (`scripts/analyze_rq4.py`, Kaissis et al. 2023 closed form): "
+                  "success ≤ Φ(Φ⁻¹(κ) + Δ/σ), with κ̂ = "
+                  f"{kappa:.4f} (`{kappa_path}`). Add/remove uses Δ = 1 (what the earlier draft reports). "
+                  "Replace-one uses Δ = 2, which is the add/remove bound at σ/2.", "",
+                  "| σ | Bound, add/remove (Δ = 1) | Bound, replace-one (Δ = 2) |", "|---|---|---|"]
+        for s in PAPER_SIGMAS:
+            lines.append(f"| {s:g} | {100 * rero_bound(s, kappa):.1f}% | {100 * rero_replace_one(s, kappa):.1f}% |")
+        lines += ["", "- Which adjacency the bound should use depends on the threat model in the cited sources "
+                  "(an informed adversary choosing between two candidate targets suggests replace-one). Check "
+                  "Hayes et al. 2023 and Kaissis et al. 2023 before choosing which value to report first.",
+                  "- κ̂ is a lower estimate from finitely many guesses, so both bounds are indicative, "
+                  "not certified."]
     with open(args.out, "w") as f:
         f.write("\n".join(lines) + "\n")
     print("\n".join(lines))

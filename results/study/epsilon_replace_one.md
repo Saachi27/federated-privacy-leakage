@@ -3,7 +3,7 @@
 Made by `scripts/recompute_epsilon.py` from the saved results; no attack was rerun and no result file was changed.
 
 - **Mechanism:** clip each example's gradient to norm C, sum the K clipped gradients, add Gaussian noise N(0, (σC)²) once, divide by K (`scripts/attack_noise_sum.py`).
-- **Old ε (add/remove one example):** sensitivity C, so the accountant gets noise multiplier σ. This is what the study JSON, `summary.md` and the Confluence paper report.
+- **Old ε (add/remove one example):** sensitivity C, so the accountant gets noise multiplier σ. This is what the study JSON, `summary.md` and the earlier paper draft report.
 - **Replace-one ε:** one example is swapped for another, so K is unchanged and can be public. The sum moves by up to 2C, so the noise is σ/2 times the sensitivity: the accountant gets σ/2.
 - Same accountant as before: Opacus RDP, sampling rate 1, one step, δ = 1e-05. ε is an accounting upper bound for one release; it is not the DP-SGD training ε.
 - Replace-one ε at σ equals add/remove ε at σ/2. All saved ε values were checked to match the old formula.
@@ -29,5 +29,17 @@ Made by `scripts/recompute_epsilon.py` from the saved results; no attack was rer
 - The bound's σ = 1 goes from ε = 4.73 to 10.7.
 - For tiny σ, RDP ε grows like 1/σ², so halving σ multiplies ε by about 4. Near σ = 1 the ratio is smaller.
 - Check: replace-one ε at σ = 2 (4.73) equals the old ε at σ = 1.
-- The illustrative reconstruction bound in the paper also uses σ; it is not recomputed here.
-- The Confluence paper already says the replace-one values would need twice the σ; this table gives those values.
+- The earlier paper draft already said the replace-one values would need twice the σ; this table gives those values.
+
+## The illustrative reconstruction bound (MNIST)
+
+ReRo bound for one release (`scripts/analyze_rq4.py`, Kaissis et al. 2023 closed form): success ≤ Φ(Φ⁻¹(κ) + Δ/σ), with κ̂ = 0.0034 (`results/study/kappa_mnist.json`). Add/remove uses Δ = 1 (what the earlier draft reports). Replace-one uses Δ = 2, which is the add/remove bound at σ/2.
+
+| σ | Bound, add/remove (Δ = 1) | Bound, replace-one (Δ = 2) |
+|---|---|---|
+| 0.3 | 73.5% | 100.0% |
+| 1 | 4.4% | 24.0% |
+| 2 | 1.4% | 4.4% |
+
+- Which adjacency the bound should use depends on the threat model in the cited sources (an informed adversary choosing between two candidate targets suggests replace-one). Check Hayes et al. 2023 and Kaissis et al. 2023 before choosing which value to report first.
+- κ̂ is a lower estimate from finitely many guesses, so both bounds are indicative, not certified.
