@@ -136,6 +136,22 @@ pilot() {
     > "$p/grid_summary.md" && echo "summary -> $p/grid_summary.md"
 }
 
+followup() {
+  # One job at a time.
+  local out=results/journal/followup stamp
+  stamp=$(date +%Y%m%d_%H%M%S)
+  mkdir -p "$out"
+  step "$out/run_labelperm_$stamp.log" "$PY" scripts/attack_multiclient.py --releases targets \
+    --settings mnist-fresh mnist-trained --ns 2 --es 5 --splits multi --attackers unrolled \
+    --label-perm 1 0 --workers "$JOBS" --out "$out/labelperm"
+  step "$out/run_restarts8_$stamp.log" "$PY" scripts/attack_multiclient.py --releases targets \
+    --settings mnist-fresh mnist-trained --ns 2 4 --es 5 --splits single multi --attackers unrolled \
+    --restarts 8 --workers "$JOBS" --out "$out/restarts8"
+  if [ -f scripts/analyze_followup.py ]; then
+    "$PY" scripts/analyze_followup.py && echo "follow-up done -> results/journal/followup_report.md"
+  fi
+}
+
 addons() {
   # One step at a time (no two jobs share the CPU).
   local out=results/journal/addons
@@ -201,9 +217,10 @@ case "${1:-all}" in
   extras) extras ;;
   all) study; core; extras ;;
   pilot) pilot; exit 0 ;;
+  followup) followup; exit 0 ;;
   multiclient) multiclient; exit 0 ;;
   journal) journal; exit 0 ;;
   addons) addons; exit 0 ;;
-  *) echo "usage: $0 [study|core|extras|all|pilot|multiclient|journal|addons]"; exit 2 ;;
+  *) echo "usage: $0 [study|core|extras|all|pilot|multiclient|journal|addons|followup]"; exit 2 ;;
 esac
 "$PY" scripts/summarize_results.py > /dev/null && echo "summary -> results/summary.md"
