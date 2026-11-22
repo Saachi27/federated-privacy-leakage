@@ -49,7 +49,7 @@ def fig_addons_forest(out, rows):
                    edgecolor=fs.INK, linewidth=0.9, zorder=3)
         ax.text(1.02, yi, r["outcome"], va="center", ha="left", fontsize=6.4, color=fs.INK_2,
                 transform=ax.get_yaxis_transform(), clip_on=False)
-        names.append(f"{r['group']}  {_row_name(r)}")
+        names.append(_row_name(r))
     ax.set_yticks(y)
     ax.set_yticklabels(names, fontsize=6.2)
     ax.set_xlabel("SSIM gap, fewer-images-per-client split − more (90% paired interval)")

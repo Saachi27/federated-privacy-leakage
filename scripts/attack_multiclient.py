@@ -41,7 +41,7 @@ OUT = {"targets": "results/journal/targets", "pilot": os.path.join(PILOT_DIR, "g
        "range": "results/journal/smoke"}
 # Fields a finished record must share with its task; anything else is a different run.
 TASK_KEYS = ["setting", "n", "e", "split", "attacker", "release", "checkpoint", "image_indices",
-             "local_lr", "tv", "restart_seeds", "iters", "cosine_iters", "unrolled_iters"]
+             "local_lr", "tv", "restart_seeds", "iters", "cosine_iters", "unrolled_iters", "label_perm"]
 
 
 class Fatal(RuntimeError):
@@ -140,6 +140,7 @@ def make_tasks(args):
                     "restart_seeds": [seed + j for j in range(args.restarts)],
                     "iters": args.iters, "cosine_iters": args.cosine_iters,
                     "unrolled_iters": args.unrolled_iters, "releases": args.releases_label,
+                    "label_perm": args.label_perm,
                     "git_commit": args.git_commit,
                     "path": task_path(args.out, setting, n, e, split, attacker, rel["release"])})
     return tasks
@@ -240,11 +241,13 @@ def run_task(t):
     x, y, meta = load_images(setting["dataset"], t["image_indices"])
     model, ckpt_hash = load_checkpoint(t["setting"], meta, t["checkpoint"])
     split, e, lr = tuple(t["split"]), t["e"], t["local_lr"]
-    observed = mc.make_release(model, x, y, split, e, lr)
+    observed = mc.make_release(model, x, y, split, e, lr)  # always the true label order
     drift, norm_ratio = mc.drift(model, x, y, e, lr)
     if e == 1 and not drift >= E1_DRIFT_MIN:
         raise Fatal(f"E = 1 drift {drift} < {E1_DRIFT_MIN} on release {t['release']}: a bug")
-    recon, info = attack(model, observed, x, y, t, meta)
+    # The attacker may assign the labels to clients in another order.
+    y_attacker = y[t["label_perm"]] if t.get("label_perm") is not None else y
+    recon, info = attack(model, observed, x, y_attacker, t, meta)
     records, _, order = match_with_order(recon, list(x))
     slot_to_target = [order.index(i) for i in range(len(order))]
     attacker_number, objective = ATTACKER_INFO[t["attacker"]]
@@ -448,6 +451,9 @@ def parse_args(argv=None):
     p.add_argument("--local-lr", default="auto", help="a number, or auto: the learning-rate rule pick")
     p.add_argument("--lr-rule", default=None, help="default: the learning-rate rule file of each setting's dataset")
     p.add_argument("--restarts", type=int, default=2)
+    p.add_argument("--label-perm", nargs="+", type=int, default=None,
+                   help="Attacker 2 gives slot i the label of image perm[i]; "
+                        "only with --splits multi --attackers unrolled --es 5 and one N")
     p.add_argument("--iters", type=int, default=300, help="L-BFGS outer steps")
     p.add_argument("--cosine-iters", type=int, default=3000)
     p.add_argument("--unrolled-iters", type=int, default=3000)
@@ -473,6 +479,12 @@ def parse_args(argv=None):
         mode = args.releases
     if args.groups is None:
         args.groups = 30 if mode != "pilot" else 10 ** 6
+    if args.label_perm is not None:
+        ok = (args.splits == ["multi"] and args.attackers == ["unrolled"] and 1 not in args.es
+              and len(args.ns) == 1 and sorted(args.label_perm) == list(range(args.ns[0])))
+        if not ok or args.out is None:
+            sys.exit("--label-perm needs --splits multi --attackers unrolled, no E = 1, one N, "
+                     "a permutation of 0..N-1 and its own --out")
     args.out = args.out or OUT[mode]
     args.git_commit = git_commit()
     return args

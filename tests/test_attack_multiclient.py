@@ -197,3 +197,30 @@ def test_current_checkpoint_hash_is_the_pinned_fresh_hash(monkeypatch):
     monkeypatch.setitem(checkpoints.FRESH_STATE_SHA256, 2, "0" * 64)
     with pytest.raises(am.Fatal):
         am.current_checkpoint_hash("mnist-fresh", 2)
+
+
+def test_label_perm_needs_the_n_x_1_attacker_2_cell(tmp_path):
+    with pytest.raises(SystemExit):
+        _args(tmp_path, "--label-perm", "1", "0")  # all splits and attackers
+    with pytest.raises(SystemExit):
+        _args(tmp_path, "--label-perm", "0", "0", "--splits", "multi", "--attackers", "unrolled", "--es", "5")
+    args = _args(tmp_path, "--label-perm", "1", "0", "--splits", "multi", "--attackers", "unrolled",
+                 "--es", "5", "--groups", "1")
+    (task,) = am.make_tasks(args)
+    assert task["label_perm"] == [1, 0] and task["split"] == [2, 1]
+    assert am.make_tasks(_args(tmp_path, "--groups", "1"))[0]["label_perm"] is None
+
+
+@pytest.mark.skipif(not HAS_DATA, reason="MNIST not downloaded")
+def test_label_perm_changes_the_attackers_labels_not_the_release(tmp_path, in_root):
+    """The release keeps the true order; only attacker 2's slot labels move."""
+    common = ["--splits", "multi", "--attackers", "unrolled", "--es", "5", "--groups", "1", "--workers", "1"]
+    (true_task,) = am.make_tasks(_args(tmp_path / "true", *common))
+    (swap_task,) = am.make_tasks(_args(tmp_path / "swap", *common, "--label-perm", "1", "0"))
+    a, b = am.run_task(true_task), am.run_task(swap_task)
+    assert a["labels"] == b["labels"] and a["labels"][0] != a["labels"][1]
+    assert a["slot_labels"] == a["labels"] and b["slot_labels"] == a["labels"][::-1]
+    assert a["release_norm"] == pytest.approx(b["release_norm"])
+    am.check_finished(swap_task)
+    with pytest.raises(SystemExit):
+        am.check_finished(dict(swap_task, label_perm=None))
