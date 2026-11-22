@@ -1,0 +1,16 @@
+start results/journal/addons/run_pairs_20261122_012700.log
+done results/journal/addons/run_pairs_20261122_012700.log
+start results/journal/addons/run_e10_20261122_022241.log
+done results/journal/addons/run_e10_20261122_022241.log
+start results/journal/pilot/tune_cifar10-fresh.out
+done results/journal/pilot/tune_cifar10-fresh.out
+start results/journal/addons/run_cifar10_20261122_053101.log
+done results/journal/addons/run_cifar10_20261122_053101.log
+21.A G_a = 2×2 − 1×4 mnist-fresh: neither above baseline
+21.A G_b = 4×1 − 2×2 mnist-fresh: more
+21.A G_a = 2×2 − 1×4 mnist-trained: neither above baseline
+21.A G_b = 4×1 − 2×2 mnist-trained: more
+21.B E = 10: 2×1 − 1×2 mnist-fresh: not run
+21.C CIFAR-10: 2×1 − 1×2 cifar10-fresh: more
+Saved -> results/journal/addons_report.md, results/journal/addons_report.json
+add-ons done -> results/journal/addons_report.md

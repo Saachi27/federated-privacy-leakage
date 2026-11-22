@@ -1,0 +1,53 @@
+W1122 03:38:47.746732 98046 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+cifar10-fresh first pass: 420 tasks, 24 done, 396 to run
+W1122 03:38:51.321942 98053 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1122 03:38:51.384816 98056 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1122 03:38:51.384829 98054 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W1122 03:38:51.385386 98055 .venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+  10/396 done, wall 408s
+  20/396 done, wall 757s
+  30/396 done, wall 1121s
+  40/396 done, wall 1458s
+  50/396 done, wall 1804s
+  60/396 done, wall 2150s
+  70/396 done, wall 2517s
+  80/396 done, wall 2852s
+  90/396 done, wall 3200s
+  100/396 done, wall 3526s
+  110/396 done, wall 3891s
+  120/396 done, wall 4226s
+  130/396 done, wall 4580s
+  140/396 done, wall 4912s
+  150/396 done, wall 5063s
+  160/396 done, wall 5124s
+  170/396 done, wall 5196s
+  180/396 done, wall 5258s
+  190/396 done, wall 5334s
+  200/396 done, wall 5398s
+  210/396 done, wall 5467s
+  220/396 done, wall 5529s
+  230/396 done, wall 5602s
+  240/396 done, wall 5665s
+  250/396 done, wall 5747s
+  260/396 done, wall 5809s
+  270/396 done, wall 5881s
+  280/396 done, wall 5938s
+  290/396 done, wall 6016s
+  300/396 done, wall 6077s
+  310/396 done, wall 6150s
+  320/396 done, wall 6213s
+  330/396 done, wall 6288s
+  340/396 done, wall 6348s
+  350/396 done, wall 6418s
+  360/396 done, wall 6481s
+  370/396 done, wall 6555s
+  380/396 done, wall 6617s
+  390/396 done, wall 6701s
+  396/396 done, wall 6731s
+cifar10-fresh T-A grid [1e-05, 0.0001, 0.001, 0.003, 0.01, 0.03, 0.1]: 84 tasks, 84 done, 0 to run
+cifar10-fresh T-A: TV 1e-05 -> 0.2522, TV 0.0001 -> 0.2885, TV 0.001 -> 0.5379, TV 0.003 -> 0.5612, TV 0.01 -> 0.5312, TV 0.03 -> 0.4495, TV 0.1 -> 0.3125; chosen 0.003
+cifar10-fresh T-B grid [1e-05, 0.0001, 0.001, 0.003, 0.01, 0.03, 0.1]: 168 tasks, 168 done, 0 to run
+cifar10-fresh T-B: TV 1e-05 -> 0.1534, TV 0.0001 -> 0.1718, TV 0.001 -> 0.3041, TV 0.003 -> 0.3251, TV 0.01 -> 0.3255, TV 0.03 -> 0.2898, TV 0.1 -> 0.2151; chosen 0.01
+cifar10-fresh T-C grid [1e-05, 0.0001, 0.001, 0.003, 0.01, 0.03, 0.1]: 168 tasks, 168 done, 0 to run
+cifar10-fresh T-C: TV 1e-05 -> 0.1552, TV 0.0001 -> 0.1748, TV 0.001 -> 0.3037, TV 0.003 -> 0.3417, TV 0.01 -> 0.3375, TV 0.03 -> 0.3120, TV 0.1 -> 0.2415; chosen 0.003
+Saved -> results/journal/pilot/tv_cifar10-fresh.json

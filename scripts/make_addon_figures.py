@@ -64,7 +64,7 @@ def fig_addons_forest(out, rows):
 
 def _as_image(arr):
     """A saved reconstruction slot or a dataset image -> H x W (grey) or H x W x 3."""
-    arr = np.asarray(arr)
+    arr = np.asarray(arr, dtype=np.float32)
     while arr.ndim > 3:
         arr = arr[0]
     if arr.shape[0] == 1:

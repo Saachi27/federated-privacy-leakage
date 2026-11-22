@@ -1,0 +1,82 @@
+{
+ "setting": "cifar10-fresh",
+ "n": 2,
+ "e": 1,
+ "split": [
+  1,
+  2
+ ],
+ "attacker": "lbfgs",
+ "release": 23,
+ "image_indices": [
+  9998,
+  4114
+ ],
+ "checkpoint": 2,
+ "local_lr": 0.3,
+ "tv_key": null,
+ "tv": null,
+ "restart_seeds": [
+  20230,
+  20231
+ ],
+ "iters": 300,
+ "cosine_iters": 3000,
+ "unrolled_iters": 3000,
+ "releases": "targets",
+ "git_commit": "5c0126633557c0b7e97239c77b9b1ab45b4adb11",
+ "attacker_number": 1,
+ "objective": "basic",
+ "split_name": "1x2",
+ "checkpoint_hash": "8752268162daf58a29496275b10c14602e8b69a6761c28d6314cb630582e75f6",
+ "labels": [
+  1,
+  4
+ ],
+ "client_partition": [
+  [
+   9998,
+   4114
+  ]
+ ],
+ "drift_cosine": 1.0,
+ "norm_ratio": 1.0,
+ "release_norm": 24.644485473632812,
+ "restart_losses": [
+  0.001377862528897822,
+  0.0010194573551416397
+ ],
+ "best_restart": 1,
+ "final_loss": 0.0010194573551416397,
+ "slot_labels": [
+  1,
+  4
+ ],
+ "slot_to_target": [
+  0,
+  1
+ ],
+ "target_to_slot": [
+  0,
+  1
+ ],
+ "ssim": [
+  0.07300615310668945,
+  0.06449121236801147
+ ],
+ "ssim_zeropad": [
+  0.134540855884552,
+  0.146722212433815
+ ],
+ "psnr": [
+  6.610986590385437,
+  6.907285451889038
+ ],
+ "mse": [
+  0.21822340786457062,
+  0.20383155345916748
+ ],
+ "recon_order": "slot",
+ "recon_file": "E1_1x2_lbfgs_r23_recon.npz",
+ "seconds": 84.02198123931885
+}
