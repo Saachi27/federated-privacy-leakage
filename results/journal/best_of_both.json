@@ -1,0 +1,133 @@
+{
+  "margin": 0.05,
+  "rows": [
+    {
+      "setting": "mnist-fresh",
+      "n": 2,
+      "attackers": "attacker 2",
+      "mean_multi": 0.8547806975975012,
+      "mean_single": 0.4095841432300707,
+      "gap": 0.4451965543674305,
+      "lo90": 0.35687783613155144,
+      "hi90": 0.5335152726033096,
+      "lower_bound_above_margin": true,
+      "gap_per_checkpoint": {
+        "0": 0.6368313348852098,
+        "1": 0.4631167973158881,
+        "2": 0.2356415309011936
+      }
+    },
+    {
+      "setting": "mnist-fresh",
+      "n": 2,
+      "attackers": "best of attacker 1 (cosine) and 2",
+      "mean_multi": 0.8579173170650999,
+      "mean_single": 0.4148044146907826,
+      "gap": 0.4431129023743173,
+      "lo90": 0.356304089749344,
+      "hi90": 0.5299217149992905,
+      "lower_bound_above_margin": true,
+      "gap_per_checkpoint": {
+        "0": 0.6231834557838738,
+        "1": 0.46449544094502926,
+        "2": 0.24165981039404869
+      }
+    },
+    {
+      "setting": "mnist-fresh",
+      "n": 4,
+      "attackers": "attacker 2",
+      "mean_multi": 0.7777713922900148,
+      "mean_single": 0.1477983568198397,
+      "gap": 0.6299730354701751,
+      "lo90": 0.5674870394509661,
+      "hi90": 0.6924590314893841,
+      "lower_bound_above_margin": true,
+      "gap_per_checkpoint": {
+        "0": 0.6190692226169631,
+        "1": 0.6806268579835887,
+        "2": 0.5902230258099734
+      }
+    },
+    {
+      "setting": "mnist-fresh",
+      "n": 4,
+      "attackers": "best of attacker 1 (cosine) and 2",
+      "mean_multi": 0.7829374074072499,
+      "mean_single": 0.14830628863467912,
+      "gap": 0.6346311187725708,
+      "lo90": 0.5726008884632028,
+      "hi90": 0.6966613490819389,
+      "lower_bound_above_margin": true,
+      "gap_per_checkpoint": {
+        "0": 0.6245119323721156,
+        "1": 0.6845538260778994,
+        "2": 0.5948275978676975
+      }
+    },
+    {
+      "setting": "mnist-trained",
+      "n": 2,
+      "attackers": "attacker 2",
+      "mean_multi": 0.697315110017856,
+      "mean_single": 0.3546485848763647,
+      "gap": 0.34266652514149126,
+      "lo90": 0.28283339257716844,
+      "hi90": 0.4024996577058141,
+      "lower_bound_above_margin": true,
+      "gap_per_checkpoint": {
+        "0": 0.33435337207047267,
+        "1": 0.34750993670895697,
+        "2": 0.3461362666450441
+      }
+    },
+    {
+      "setting": "mnist-trained",
+      "n": 2,
+      "attackers": "best of attacker 1 (cosine) and 2",
+      "mean_multi": 0.7021688026686509,
+      "mean_single": 0.57346121519804,
+      "gap": 0.12870758747061092,
+      "lo90": 0.07897312150592706,
+      "hi90": 0.1784420534352948,
+      "lower_bound_above_margin": true,
+      "gap_per_checkpoint": {
+        "0": 0.11658746972680092,
+        "1": 0.17073355838656426,
+        "2": 0.09880173429846764
+      }
+    },
+    {
+      "setting": "mnist-trained",
+      "n": 4,
+      "attackers": "attacker 2",
+      "mean_multi": 0.49182282366479435,
+      "mean_single": 0.2814979556501688,
+      "gap": 0.21032486801462558,
+      "lo90": 0.1536789764726928,
+      "hi90": 0.26697075955655836,
+      "lower_bound_above_margin": true,
+      "gap_per_checkpoint": {
+        "0": 0.1675517311319709,
+        "1": 0.2597382650477812,
+        "2": 0.2036846078641247
+      }
+    },
+    {
+      "setting": "mnist-trained",
+      "n": 4,
+      "attackers": "best of attacker 1 (cosine) and 2",
+      "mean_multi": 0.5038804113554458,
+      "mean_single": 0.4457195275152723,
+      "gap": 0.05816088384017348,
+      "lo90": 0.018914181090856415,
+      "hi90": 0.09740758658949056,
+      "lower_bound_above_margin": false,
+      "gap_per_checkpoint": {
+        "0": 0.06768854567781091,
+        "1": 0.01969207525253296,
+        "2": 0.08710203059017659
+      }
+    }
+  ]
+}
