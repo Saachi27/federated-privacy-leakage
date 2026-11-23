@@ -1,0 +1,16 @@
+start results/journal/followup/run_labelperm_20261122_200303.log
+done results/journal/followup/run_labelperm_20261122_200303.log
+start results/journal/followup/run_restarts8_20261122_200303.log
+done results/journal/followup/run_restarts8_20261122_200303.log
+mnist-fresh N=2 attacker 2 (2 restarts, locked): more
+mnist-fresh N=2 attacker 2, 8 restarts: more
+mnist-trained N=2 attacker 2 (2 restarts, locked): more
+mnist-trained N=2 attacker 2, 8 restarts: more
+mnist-fresh N=4 attacker 2 (2 restarts, locked): more
+mnist-fresh N=4 attacker 2, 8 restarts: more
+mnist-trained N=4 attacker 2 (2 restarts, locked): more
+mnist-trained N=4 attacker 2, 8 restarts: more
+mnist-fresh N=2 attacker 2, label map unknown: more
+mnist-trained N=2 attacker 2, label map unknown: more
+Saved -> results/journal/followup_report.md, results/journal/followup_report.json
+follow-up done -> results/journal/followup_report.md
