@@ -41,5 +41,6 @@ ReRo bound for one release (`scripts/analyze_rq4.py`, Kaissis et al. 2023 closed
 | 1 | 4.4% | 24.0% |
 | 2 | 1.4% | 4.4% |
 
-- Which adjacency the bound should use depends on the threat model in the cited sources (an informed adversary choosing between two candidate targets suggests replace-one). Check Hayes et al. 2023 and Kaissis et al. 2023 before choosing which value to report first.
+- Which value to report: the cited ReRo results (Hayes et al. 2023; Kaissis et al. 2023) compare the release that holds the target with a reference release that does not depend on the target (add-one). Any such reference works, so for a fixed-size release (public K) one can take the other K − 1 clipped gradients plus the same noise, with the same divisor K. The target then shifts the mean by at most C/K against noise σC/K, so Δ = 1 holds and the add/remove column is a valid bound. The replace-one column (two candidate targets) is a valid but looser bound. Report the add/remove value (4.4% at σ = 1) with this argument.
+- This is separate from the ε adjacency above: the one-release ε of a fixed-size release is still stated under replace-one.
 - κ̂ is a lower estimate from finitely many guesses, so both bounds are indicative, not certified.
