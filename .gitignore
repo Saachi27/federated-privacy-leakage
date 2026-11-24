@@ -7,5 +7,6 @@ results/archive_*/
 results/runs/*.log
 results/*.log
 *.pt
+!results/models/mnist_lenet_r20_s*.pt
 *.pth
 .DS_Store

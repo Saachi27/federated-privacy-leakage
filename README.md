@@ -91,9 +91,8 @@ bash scripts/run_experiments.sh addons       # 2 x 2, E = 10 and CIFAR-10
 bash scripts/run_experiments.sh study        # Study A
 ```
 
-Finished tasks are skipped, so a run can be stopped and resumed. Trained
-checkpoints are not stored in the repository; `scripts/train_attack_target.py`
-recreates them from their seeds, and the `study` stage does this automatically.
+Finished tasks are skipped, so a run can be stopped and resumed. The three
+trained MNIST checkpoints used by the attacks are in `results/models/`.
 
 ## Tests
 

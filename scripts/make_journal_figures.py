@@ -75,12 +75,12 @@ def fig_threat_model(out):
     _box(ax, cols[1], ys["multi"], w, h, "Each client\nruns E local\nsteps on\nits image")
     _box(ax, cols[1], ys["single"], w, h, "The client\nruns E local\nsteps on all\nN images")
     _box(ax, cols[2], ys["multi"], w, h, "Masked\nuploads;\nmasks cancel\nin the sum")
-    _box(ax, cols[2], ys["single"], w, h, "One masked\nupload")
+    _box(ax, cols[2], ys["single"], w, h, "Full update,\nno masking")
     for k in ys:
         for c in (0, 1):
             _arrow(ax, (cols[c] + w, ys[k] + h / 2), (cols[c + 1], ys[k] + h / 2))
     yr = (ys["multi"] + ys["single"]) / 2
-    _box(ax, cols[3], yr, w, h, "Server sees\nonly the sum\nU (scaled\nby NηE)", weight="bold")
+    _box(ax, cols[3], yr, w, h, "Server forms\nU: weighted\nsum ÷ NηE", weight="bold")
     _arrow(ax, (cols[2] + w, ys["multi"] + h / 2), (cols[3], yr + h * 0.8))
     _arrow(ax, (cols[2] + w, ys["single"] + h / 2), (cols[3], yr + h * 0.2))
     _box(ax, cols[4], ys["multi"], w, h, "Attacker 1:\nU as a mean\ngradient")
