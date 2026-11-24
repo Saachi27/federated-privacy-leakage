@@ -51,46 +51,47 @@ def release_baselines(path, n):
 def _box(ax, x, y, w, h, text, edge=fs.INK_2, face="white", weight="normal"):
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.008,rounding_size=0.012",
                                 linewidth=0.8, edgecolor=edge, facecolor=face))
-    ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=6.2, color=fs.INK,
-            weight=weight, linespacing=1.25)
+    ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=7.5, color=fs.INK,
+            weight=weight, linespacing=1.2)
 
 
 def _arrow(ax, a, b, color=fs.INK_2):
-    ax.add_patch(FancyArrowPatch(a, b, arrowstyle="-|>", mutation_scale=7, linewidth=0.8, color=color,
+    ax.add_patch(FancyArrowPatch(a, b, arrowstyle="-|>", mutation_scale=8, linewidth=0.8, color=color,
                                  shrinkA=0, shrinkB=0))
 
 
 def fig_threat_model(out):
-    fig, ax = plt.subplots(figsize=(fs.DOUBLE_COL, 2.1))
+    """Drawn at the paper's text width so the box text stays at 7.5 pt on the page."""
+    fig, ax = plt.subplots(figsize=(fs.TEXT_WIDTH, 2.6))
+    ax.set_position([0, 0, 1, 1])
     ax.set_xlim(-0.012, 1.012)
     ax.set_ylim(0, 1)
     ax.axis("off")
-    h = 0.22
-    ys = {"multi": 0.68, "single": 0.20}
-    cols = [0.0, 0.17, 0.34, 0.535, 0.725, 0.885]  # left edge of each column
-    w = 0.135
+    w, h = 0.16, 0.25
+    ys = {"multi": 0.70, "single": 0.31}
+    cols = [0.0, 0.21, 0.42, 0.63, 0.84]  # left edge of each column
     _box(ax, cols[0], ys["multi"], w, h, "N clients,\n1 image each\n(N × 1)", edge=fs.MULTI, weight="bold")
     _box(ax, cols[0], ys["single"], w, h, "1 client,\nall N images\n(1 × N)", edge=fs.SINGLE, weight="bold")
-    _box(ax, cols[1], ys["multi"], w, h, "Each client runs\nE local steps\non its image")
-    _box(ax, cols[1], ys["single"], w, h, "The client runs\nE local steps\non all N images")
-    _box(ax, cols[2], ys["multi"], w, h, "Masked uploads;\nmasks cancel\nin the sum")
+    _box(ax, cols[1], ys["multi"], w, h, "Each client\nruns E local\nsteps on\nits image")
+    _box(ax, cols[1], ys["single"], w, h, "The client\nruns E local\nsteps on all\nN images")
+    _box(ax, cols[2], ys["multi"], w, h, "Masked\nuploads;\nmasks cancel\nin the sum")
     _box(ax, cols[2], ys["single"], w, h, "One masked\nupload")
     for k in ys:
         for c in (0, 1):
             _arrow(ax, (cols[c] + w, ys[k] + h / 2), (cols[c + 1], ys[k] + h / 2))
-    yr = 0.44
-    _box(ax, cols[3], yr, w + 0.015, h, "Server sees\nonly the sum U\n(scaled by NηE)", weight="bold")
+    yr = (ys["multi"] + ys["single"]) / 2
+    _box(ax, cols[3], yr, w, h, "Server sees\nonly the sum\nU (scaled\nby NηE)", weight="bold")
     _arrow(ax, (cols[2] + w, ys["multi"] + h / 2), (cols[3], yr + h * 0.8))
     _arrow(ax, (cols[2] + w, ys["single"] + h / 2), (cols[3], yr + h * 0.2))
     _box(ax, cols[4], ys["multi"], w, h, "Attacker 1:\nU as a mean\ngradient")
     _box(ax, cols[4], ys["single"], w, h, "Attacker 2:\nunrolls the\nE local steps")
-    _arrow(ax, (cols[3] + w + 0.015, yr + h * 0.8), (cols[4], ys["multi"] + h / 2))
-    _arrow(ax, (cols[3] + w + 0.015, yr + h * 0.2), (cols[4], ys["single"] + h / 2))
-    _box(ax, cols[5], 0.30, 0.115, 0.50, "Score each\nrelease:\nmean SSIM,\nany image\n≥ 0.9, and\nretrieval; vs\nbaseline")
-    _arrow(ax, (cols[4] + w, ys["multi"] + h / 2), (cols[5], 0.70))
-    _arrow(ax, (cols[4] + w, ys["single"] + h / 2), (cols[5], 0.40))
-    ax.text(0.5, 0.03, "Same N images and model in both rows.  At E = 1 both rows give the same mean gradient "
-            "(positive control).  Attackers get the true labels.", fontsize=6.3, color=fs.INK_2, ha="center")
+    _arrow(ax, (cols[3] + w, yr + h * 0.8), (cols[4], ys["multi"] + h / 2))
+    _arrow(ax, (cols[3] + w, yr + h * 0.2), (cols[4], ys["single"] + h / 2))
+    notes = ("Same images and model in both rows; at E = 1 both give the same mean gradient (positive control).",
+             "Attackers get the true labels. Each release is scored against the label-aware baseline:",
+             "mean SSIM, any image ≥ 0.9, and gallery retrieval.")
+    for yt, note in zip((0.17, 0.09, 0.01), notes):
+        ax.text(0.5, yt, note, fontsize=7, color=fs.INK_2, ha="center", va="center")
     return fs.save(fig, out, "fig_threat_model")
 
 
@@ -128,36 +129,68 @@ def fig_main_paired(out, records, baselines, report):
     return fs.save(fig, out, "fig_main_paired")
 
 
+MARKERS = {"unrolled": "o", "cosine": "s", "lbfgs": "D"}
+
+
+def grouped_forest(out, name, groups, xlabel):
+    """A forest plot at the paper's text width, with one bold header row per group."""
+    n_lines = sum(1 + len(rows) for _, rows in groups)
+    fig, ax = plt.subplots(figsize=(fs.TEXT_WIDTH, 0.165 * n_lines + 0.75))
+    ax.axvspan(-0.05, 0.05, color=fs.GRID, alpha=0.8, lw=0, zorder=0)
+    ax.axvline(0, color=fs.BASE, lw=0.8, zorder=1)
+    ticks, labels, header = [], [], []
+    los, his = [], []
+    y = n_lines - 1
+    for title, rows in groups:
+        ticks.append(y)
+        labels.append(title)
+        header.append(True)
+        y -= 1
+        for r in rows:
+            main = r.get("main", False)
+            ax.plot([r["lo"], r["hi"]], [y, y], color=fs.INK, lw=1.4 if main else 0.9, zorder=2,
+                    ls=(0, (2, 1.5)) if r.get("descriptive") else "-")
+            ax.scatter([r["mean"]], [y], marker=r["marker"], s=30 if main else 18,
+                       color=fs.INK if main else "white", edgecolor=fs.INK, linewidth=0.9, zorder=3)
+            ax.text(1.02, y, r["outcome"] + (" (main)" if main else ""), va="center", ha="left", fontsize=7,
+                    color=fs.INK if main else fs.INK_2, weight="bold" if main else "normal",
+                    transform=ax.get_yaxis_transform(), clip_on=False)
+            ticks.append(y)
+            labels.append(r["label"])
+            header.append(False)
+            los.append(r["lo"])
+            his.append(r["hi"])
+            y -= 1
+    ax.set_yticks(ticks)
+    ax.set_yticklabels(labels, fontsize=7.5)
+    for tick, is_header in zip(ax.get_yticklabels(), header):
+        if is_header:
+            tick.set_fontweight("bold")
+            tick.set_color(fs.INK)
+    ax.tick_params(axis="y", length=0)
+    ax.set_xlabel(xlabel)
+    ax.text(0, n_lines - 0.45, "±0.05 margin", ha="center", va="bottom", fontsize=6.5, color=fs.INK_2)
+    ax.set_ylim(-0.7, n_lines + 0.35)
+    ax.grid(axis="y", visible=False)
+    ax.set_xlim(min(-0.2, min(los) - 0.05), max(0.2, max(his) + 0.05))
+    fig.tight_layout()
+    return fs.save(fig, out, name)
+
+
 def fig_gap_forest(out, report):
-    rows = []
+    groups = []
     for (s, n) in [(b[0], b[1]) for b in report["blocks"]]:
+        rows = []
         for att in ("unrolled", "cosine", "lbfgs"):
             key = f"{s}|{n}|{att}"
             if key in report["labels"]:
                 lab = report["labels"][key]
-                rows.append((s, n, att, lab["gap"]["t90"], lab["outcome"]))
-    fig, ax = plt.subplots(figsize=(fs.DOUBLE_COL * 0.62, 3.1))
-    markers = {"unrolled": "o", "cosine": "s", "lbfgs": "D"}
-    ax.axvspan(-0.05, 0.05, color=fs.GRID, alpha=0.8, lw=0, zorder=0)
-    ax.axvline(0, color=fs.BASE, lw=0.8, zorder=1)
-    y = np.arange(len(rows))[::-1]
-    for yi, (s, n, att, g, outcome) in zip(y, rows):
-        main = s == "mnist-fresh" and n == 2 and att == "unrolled"
-        ax.plot([g["lo"], g["hi"]], [yi, yi], color=fs.INK, lw=1.4 if main else 0.9, zorder=2)
-        ax.scatter([g["mean"]], [yi], marker=markers[att], s=26 if main else 16,
-                   color=fs.INK if main else "white", edgecolor=fs.INK, linewidth=0.9, zorder=3)
-        ax.text(1.02, yi, outcome + (" (main)" if main else ""), va="center", ha="left", fontsize=6.4,
-                color=fs.INK if main else fs.INK_2, weight="bold" if main else "normal",
-                transform=ax.get_yaxis_transform(), clip_on=False)
-    ax.set_yticks(y)
-    ax.set_yticklabels([f"{NAME[s]}, N = {n}, {ATT[a]}" for s, n, a, _, _ in rows], fontsize=6.4)
-    ax.set_xlabel("SSIM gap, N × 1 − 1 × N (90% paired interval)")
-    ax.text(0, len(rows) - 0.35, "±0.05\nmargin", ha="center", va="bottom", fontsize=6, color=fs.INK_2)
-    ax.set_ylim(-0.7, len(rows) + 0.4)
-    ax.grid(axis="y", visible=False)
-    lo = min(r[3]["lo"] for r in rows)
-    ax.set_xlim(min(-0.2, lo - 0.05), max(r[3]["hi"] for r in rows) + 0.05)
-    return fs.save(fig, out, "fig_gap_forest")
+                g = lab["gap"]["t90"]
+                rows.append({"label": ATT[att], "lo": g["lo"], "mean": g["mean"], "hi": g["hi"],
+                             "outcome": lab["outcome"], "marker": MARKERS[att],
+                             "main": s == "mnist-fresh" and n == 2 and att == "unrolled"})
+        groups.append((f"{NAME[s]}, N = {n}", rows))
+    return grouped_forest(out, "fig_gap_forest", groups, "SSIM gap, N × 1 − 1 × N (90% paired interval)")
 
 
 def fig_risk(out, report):
@@ -170,27 +203,29 @@ def fig_risk(out, report):
                 rows.append((s, n, split, color, cells[f"{s}|{n}|5|{split}|unrolled"]))
     measures = [("mean_ssim", "Mean SSIM", "mean_b"), ("any_pass_rate", "Any image SSIM ≥ 0.9", "any_pass_rate"),
                 ("hit_rate", "Gallery retrieval hit", "hit_rate")]
-    fig, axes = plt.subplots(1, 3, figsize=(fs.DOUBLE_COL, 2.6), sharey=True)
+    # Drawn at the paper's text width so labels stay at 7-7.5 pt on the page.
+    fig, axes = plt.subplots(1, 3, figsize=(fs.TEXT_WIDTH, 2.9), sharey=True)
     y = np.arange(len(rows))[::-1]
     for ax, (key, title, bkey) in zip(axes, measures):
         for yi, (s, n, split, color, c) in zip(y, rows):
             ax.plot([0, c[key]], [yi, yi], color=color, lw=1.0, alpha=0.45, solid_capstyle="round")
-            ax.scatter([c[key]], [yi], color=color, s=22, edgecolor="white", linewidth=0.5, zorder=3)
-            ax.text(c[key] + 0.03, yi, f"{c[key]:.2f}", va="center", fontsize=6, color=fs.INK)
+            ax.scatter([c[key]], [yi], color=color, s=20, edgecolor="white", linewidth=0.5, zorder=3)
+            ax.text(c[key] + 0.04, yi, f"{c[key]:.2f}", va="center", fontsize=7, color=fs.INK)
             b = base[str(n)][bkey]
             ax.plot([b, b], [yi - 0.38, yi + 0.38], color=fs.BASE, lw=1.2, zorder=2)
-        ax.set_title(title)
-        ax.set_xlim(0, 1.15)
+        ax.set_title(title, fontsize=7.5)
+        ax.set_xlim(0, 1.35)
         ax.set_xticks([0, 0.5, 1])
         ax.grid(axis="y", visible=False)
     axes[0].set_yticks(y)
     axes[0].set_yticklabels([f"{NAME[s]}, N = {n}, {split.replace('x', ' × ')}" for s, n, split, _, _ in rows],
-                            fontsize=6.4)
+                            fontsize=7.5)
     handles = [plt.Line2D([], [], marker="o", ls="", color=fs.MULTI, label="N × 1 (N clients)"),
                plt.Line2D([], [], marker="o", ls="", color=fs.SINGLE, label="1 × N (one client)"),
                plt.Line2D([], [], color=fs.BASE, lw=1.2, label="label-aware baseline")]
-    fig.legend(handles=handles, loc="lower center", ncol=3, bbox_to_anchor=(0.55, -0.06))
-    fig.text(0.55, 1.0, "E = 5, attacker 2, 30 releases per row", ha="center", fontsize=7, color=fs.INK_2)
+    fig.suptitle("E = 5, attacker 2, 30 releases per row", fontsize=7, color=fs.INK_2)
+    fig.tight_layout(rect=(0, 0.07, 1, 1), w_pad=0.6)
+    fig.legend(handles=handles, loc="lower center", ncol=3, bbox_to_anchor=(0.5, 0.0))
     return fs.save(fig, out, "fig_risk")
 
 

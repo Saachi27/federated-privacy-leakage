@@ -33,6 +33,8 @@ SETTING_NAMES = {
 # Journal page widths (Elsevier: single column ~90 mm, double ~190 mm).
 SINGLE_COL = 3.54
 DOUBLE_COL = 7.48
+# Text width of the Elsevier preprint layout (elsarticle, about 384 pt).
+TEXT_WIDTH = 5.3
 
 
 def apply():

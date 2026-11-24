@@ -24,11 +24,11 @@ def _interval(part):
     return part.get("boot90"), True
 
 
-def _row_name(r):
+def _group_name(r):
     setting = fs.SETTING_NAMES[r["setting"]]
     split = f"{r['multi_split'].replace('x', '×')} − {r['single_split'].replace('x', '×')}"
     extra = ", E = 10" if r["group"] == "21.B" else ""
-    return f"{setting}, {split}{extra}, {jf.ATT[r['attacker']]}"
+    return f"{setting}, {split}{extra}"
 
 
 def fig_addons_forest(out, rows):
@@ -36,30 +36,14 @@ def fig_addons_forest(out, rows):
     if not rows:
         print("fig_addons_forest: no add-on rows yet, skipped")
         return None
-    fig, ax = plt.subplots(figsize=(fs.DOUBLE_COL * 0.66, 0.24 * len(rows) + 0.7))
-    ax.axvspan(-0.05, 0.05, color=fs.GRID, alpha=0.8, lw=0, zorder=0)
-    ax.axvline(0, color=fs.BASE, lw=0.8, zorder=1)
-    y = np.arange(len(rows))[::-1]
-    names = []
-    for yi, r in zip(y, rows):
+    groups = {}  # header -> rows, in report order
+    for r in rows:
         g, descriptive = _interval(r["gap"])
-        ax.plot([g["lo"], g["hi"]], [yi, yi], color=fs.INK, lw=0.9, zorder=2,
-                ls=(0, (2, 1.5)) if descriptive else "-")
-        ax.scatter([g["mean"]], [yi], marker=MARKERS[r["attacker"]], s=16, color="white",
-                   edgecolor=fs.INK, linewidth=0.9, zorder=3)
-        ax.text(1.02, yi, r["outcome"], va="center", ha="left", fontsize=6.4, color=fs.INK_2,
-                transform=ax.get_yaxis_transform(), clip_on=False)
-        names.append(_row_name(r))
-    ax.set_yticks(y)
-    ax.set_yticklabels(names, fontsize=6.2)
-    ax.set_xlabel("SSIM gap, fewer-images-per-client split − more (90% paired interval)")
-    ax.text(0, len(rows) - 0.35, "±0.05\nmargin", ha="center", va="bottom", fontsize=6, color=fs.INK_2)
-    ax.set_ylim(-0.7, len(rows) + 0.4)
-    ax.grid(axis="y", visible=False)
-    los = [_interval(r["gap"])[0]["lo"] for r in rows]
-    his = [_interval(r["gap"])[0]["hi"] for r in rows]
-    ax.set_xlim(min(-0.2, min(los) - 0.05), max(0.2, max(his) + 0.05))
-    return fs.save(fig, out, "fig_addons_forest")
+        groups.setdefault(_group_name(r), []).append({
+            "label": jf.ATT[r["attacker"]], "lo": g["lo"], "mean": g["mean"], "hi": g["hi"],
+            "outcome": r["outcome"], "marker": MARKERS[r["attacker"]], "descriptive": descriptive})
+    return jf.grouped_forest(out, "fig_addons_forest", list(groups.items()),
+                             "SSIM gap, fewer − more images per client (90% paired interval)")
 
 
 def _as_image(arr):
